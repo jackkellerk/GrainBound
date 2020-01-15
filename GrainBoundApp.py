@@ -42,6 +42,7 @@ Builder.load_string("""
 
         Button:
             text: "Log out"
+            width: 100
             pos: root.width-140, root.height-120
 
         Label:
@@ -52,9 +53,40 @@ Builder.load_string("""
 
         Label:
             text: "Data Menu"
-            font_size: 25
+            font_size: 30
             color: (0,0,0,1)
-            pos: 220, root.height-500
+            pos: 100, root.height-300
+        
+        Button:
+            text: "Type 1"
+            pos: 80, root.height-400
+        Button:
+            text: "Type 2"
+            pos: 200, root.height-400
+        Button:
+            text: "Type 3"
+            pos: 320, root.height-400
+
+        Label:
+            text: "Which questions would you like to ask about the data?"
+            font_size: 30
+            color: (0,0,0,1)
+            pos: 350, root.height-550
+        
+        Button:
+            text: "Question 1 about data..."
+            width: 400
+            height: 100
+            pos: 80, root.height-650
+        Button:
+            text: "Question 2 about data..."
+            width: 400
+            pos: 80, root.height-750
+        Button:
+            text: "Question 3 about data..."
+            width: 400
+            pos: 80, root.height-850
+        
 
 
 
