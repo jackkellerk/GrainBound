@@ -1,4 +1,4 @@
-#To run the Kivy application: 
+#To run the Kivy application: simply double click on the python script. easy.
 
 import kivy
 kivy.require('1.11.1') #current kivy version
