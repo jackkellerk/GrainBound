@@ -29,7 +29,7 @@ Builder.load_string("""
 
         canvas:
             Rectangle:
-                source:"/Users/nkt/Desktop/GrainBound/Unknown.png"
+                source:"/Users/nkt/Desktop/GrainBound/whitebg.png"
                 pos: 0, 0
                 size: root.width, root.height
 
