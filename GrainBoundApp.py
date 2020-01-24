@@ -86,10 +86,11 @@ Builder.load_string("""
             text: "Question 3 about data..."
             width: 400
             pos: 80, root.height-850
-        
 
-
-
+        Button:
+            text: "Run!"
+            width: 100
+            pos: root.width-110, 10
 
 """)
 
