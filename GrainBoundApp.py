@@ -1,7 +1,8 @@
-#To run the Kivy application: simply double click on the python script. easy.
+#To go to python 2.7 'source C:/Python27/temp-python/Scripts/activate' then 'python GrainBoundApp.py'
+#For clients, make an install bash file to install python 2.7 for them and all of the dependencies in my current python 2.7 version. Make sure about this because this took forever!
 
 import kivy
-kivy.require('1.11.1') #current kivy version
+kivy.require('1.10.1') #current kivy version
 
 from kivy.app import App
 
@@ -19,6 +20,13 @@ from kivy.base import Builder
 from kivy.properties import StringProperty
 from kivy.graphics import Color, Rectangle
 
+#For DM3
+import DM3lib as dm3
+
+dm3f = dm3.DM3("example.dm3")
+print dm3f.info
+
+#TODO fix the graphics because I ruined it :(
 
 Builder.load_string("""
 <rootwi>:
