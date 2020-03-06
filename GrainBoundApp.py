@@ -10,6 +10,7 @@ from kivy.uix.label import Label
 from kivy.uix.button import Button
 from kivy.uix.image import Image
 from kivy.uix.image import AsyncImage
+from kivy.uix.textinput import TextInput 
 
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.boxlayout import BoxLayout
@@ -57,7 +58,7 @@ Builder.load_string("""
             pos: 215, root.height-230
 
         Button:
-            text: "Imaging"
+            text: "Tool: Imaging"
             pos: root.width-160, root.height-85
             width: 150
             height: 75
@@ -65,40 +66,92 @@ Builder.load_string("""
             background_normal: ''
 
         Label:
-            text: "Data Menu"
-            font_size: 30
+            id: brightnessLabel
+            text: " Brightness"
+            pos: 90, root.height-670
             color: (0,0,0,1)
-            pos: 100, root.height-300
-        
-        Button:
-            text: "Type 1"
-            pos: 80, root.height-400
-        Button:
-            text: "Type 2"
-            pos: 200, root.height-400
-        Button:
-            text: "Type 3"
-            pos: 320, root.height-400
+
+        Slider:
+            id: brightnessSlider
+            min: 0
+            max: 100
+            step: 1
+            value: 50.0
+            width: 200
+            orientation: 'horizontal'
+            pos: 100, root.height-700
+
+        TextInput:
+            text: str(brightnessSlider.value)
+            width: 50
+            height: 30
+            pos: 310, root.height-667.5
+            background_color: (0.73,0.96,1.0,1) if self.focus else (0.93,0.93,0.93,1)
+            background_normal: ''
 
         Label:
-            text: "Which questions would you like to ask about the data?"
-            font_size: 30
+            id: gammaLabel
+            text: "Gamma"
+            pos: 90, root.height-570
             color: (0,0,0,1)
-            pos: 350, root.height-550
-        
+
+        Slider:
+            id: gammaSlider
+            min: 0
+            max: 100
+            step: 1
+            value: 50.0
+            width: 200
+            orientation: 'horizontal'
+            pos: 100, root.height-600
+
+        TextInput:
+            text: str(gammaSlider.value)
+            width: 50
+            height: 30
+            pos: 310, root.height-567.5
+            background_color: (0.73,0.96,1.0,1) if self.focus else (0.93,0.93,0.93,1)
+            background_normal: ''
+
+        Label:
+            id: contrastLabel
+            text: "Contrast"
+            pos: 90, root.height-770
+            color: (0,0,0,1)
+
+        Slider:
+            id: contrastSlider
+            min: 0
+            max: 100
+            step: 1
+            value: 50.0
+            width: 200
+            orientation: 'horizontal'
+            pos: 100, root.height-800
+
+        TextInput:
+            text: str(contrastSlider.value)
+            width: 50
+            height: 30
+            pos: 310, root.height-767.5
+            background_color: (0.73,0.96,1.0,1) if self.focus else (0.93,0.93,0.93,1)
+            background_normal: ''
+
         Button:
-            text: "Question 1 about data..."
-            width: 400
-            height: 100
-            pos: 80, root.height-650
+            text: "Import Data"
+            width: 265
+            height: 35
+            background_color: (0.96, 0.55, 0.66, 1.0)
+            background_normal: ''
+            pos: 100, root.height-835
+
         Button:
-            text: "Question 2 about data..."
-            width: 400
-            pos: 80, root.height-750
-        Button:
-            text: "Question 3 about data..."
-            width: 400
-            pos: 80, root.height-850
+            text: "Show Metadata"
+            width: 265
+            height: 35
+            background_color: (0.96, 0.55, 0.66, 1.0)
+            background_normal: ''
+            pos: 100, root.height-885
 
         Button:
             text: "Run!"
