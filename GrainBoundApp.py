@@ -27,6 +27,7 @@ dm3f = dm3.DM3("example.dm3")
 print dm3f.info
 
 #TODO fix the graphics because I ruined it :(
+#https://kivy.org/doc/stable/api-kivy.uix.slider.html
 
 Builder.load_string("""
 <rootwi>:
@@ -43,21 +44,25 @@ Builder.load_string("""
 
         Image:
             size_hint_y: None
-            source:"/Users/nkt/Desktop/GrainBound/GrainBound_Logo.png"
+            source:"./GrainBound_Logo.png"
             width: 300
             allow_stretch: True
-            pos: 50, root.height-100
+            pos: 50, root.height-150
+
+        Image:
+            size_hint_y: None
+            source:"./logo_graphic.png"
+            height: 225
+            width: 225
+            pos: 215, root.height-230
 
         Button:
-            text: "Log out"
-            width: 100
-            pos: root.width-140, root.height-120
-
-        Label:
-            text: "Tool: Canonical Correlation Analysis"
-            font_size: 30
-            color: (0,0.88,0.77,1)
-            pos: 220, root.height-200
+            text: "Imaging"
+            pos: root.width-160, root.height-85
+            width: 150
+            height: 75
+            background_color: (0.96, 0.55, 0.66, 1.0)
+            background_normal: ''
 
         Label:
             text: "Data Menu"
@@ -97,8 +102,11 @@ Builder.load_string("""
 
         Button:
             text: "Run!"
-            width: 100
-            pos: root.width-110, 10
+            width: 150
+            height: 75
+            background_color: (0.96, 0.55, 0.66, 1.0)
+            background_normal: ''
+            pos: root.width-160, 10
 
 """)
 
