@@ -8,15 +8,17 @@ kivy.require('1.10.1') #current kivy version
 import cv2
 import numpy as np
 import os
+from kivy.garden.matplotlib.backend_kivyagg import FigureCanvasKivyAgg
+import matplotlib.pyplot as plt
 
 from kivy.app import App
 
 from kivy.uix.label import Label
+from kivy.uix.popup import Popup
 from kivy.uix.button import Button
 from kivy.uix.image import Image
 from kivy.uix.image import AsyncImage
-from kivy.uix.textinput import TextInput 
-
+from kivy.uix.textinput import TextInput
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.floatlayout import FloatLayout
@@ -29,8 +31,14 @@ from kivy.graphics import Color, Rectangle
 #For DM3
 import DM3lib as dm3
 
+# This loads all of the data from hte dm3 file
 dm3f = dm3.DM3("example.dm3")
 print dm3f.info
+
+# This creates the plot for the historgram
+plt.plot([1, 23, 2, 4])
+plt.ylabel("Number of Pixels")
+plt.xlabel('Grey Levels')
 
 Builder.load_string("""
 <rootwi>:
@@ -103,6 +111,12 @@ Builder.load_string("""
             background_normal: ''
             on_text_validate: root.brightnessUpdate()
 
+        BoxLayout:
+            id: histogram
+            pos: 95, root.height-470
+            width: 280
+            height: 180
+
         Label:
             id: gammaLabel
             text: "Gamma"
@@ -174,6 +188,7 @@ Builder.load_string("""
             background_color: (0.96, 0.55, 0.66, 1.0)
             background_normal: ''
             pos: 100, root.height-885
+            on_press: root.showData()
 
 """)
 
@@ -195,6 +210,10 @@ class CustomLayout(GridLayout):
 
 class rootwi(GridLayout):
 
+    def showData(self):
+        popup = Popup(title='Metadata', content=Label(text=str(dm3f.info)), size_hint=(None, None), size=(400, 400))
+        popup.open()
+
     def adjust_gamma(image, gamma=1.0):
 
         invGamma = 1.0 / gamma
@@ -213,6 +232,9 @@ class rootwi(GridLayout):
             alpha = (2.0 * (self.ids.contrastSlider.value / 100)) + 1.0 # Contrast control (1.0-3.0)
             adjusted = cv2.convertScaleAbs(img, alpha=alpha, beta=self.ids.brightnessSlider.value)
             cv2.imwrite("./out.png", adjusted)
+
+            # Update the historgram
+            self.ids.histogram.add_widget(FigureCanvasKivyAgg(plt.gcf()))
 
             # Reassign the source of the image
             self.ids.material.source = "./out.png"
@@ -260,6 +282,7 @@ class rootwi(GridLayout):
 class MyApp(App):
     def build(self):
         # Eventually make a method here to delete the temp directory
+        self.ids.histogram.add_widget(FigureCanvasKivyAgg(plt.gcf()))
         return rootwi()
 
 class GBApp(App):
