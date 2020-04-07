@@ -28,12 +28,17 @@ from kivy.base import Builder
 from kivy.properties import StringProperty
 from kivy.graphics import Color, Rectangle
 
+# TODO: Remove Gamma (unless you can figure it out), Make Brightness and Contrast start at 50%, and then for the metadata, show dimension size and other data, and on the image show magnification. DM3 file should have image
+
 #For DM3
 import DM3lib as dm3
 
 # This loads all of the data from hte dm3 file
 dm3f = dm3.DM3("example.dm3")
-print dm3f.info
+print dm3f.tags
+
+# Read the image so we don't repeat unnecessary work (read in greyscale)
+img = cv2.imread("material.jpg", 0)
 
 # This creates the plot for the historgram
 plt.plot([1, 23, 2, 4])
@@ -228,12 +233,16 @@ class rootwi(GridLayout):
             self.ids.contrastSlider.value = float(self.ids.contrastTextInput.text)
 
             # Edit the image
-            img = cv2.imread("material.jpg")
             alpha = (2.0 * (self.ids.contrastSlider.value / 100)) + 1.0 # Contrast control (1.0-3.0)
             adjusted = cv2.convertScaleAbs(img, alpha=alpha, beta=self.ids.brightnessSlider.value)
             cv2.imwrite("./out.png", adjusted)
 
             # Update the historgram
+            #lst =[]
+            plt.clf()
+            plt.plot()
+            for child in self.ids.histogram.children:
+                self.ids.histogram.remove_widget(child)
             self.ids.histogram.add_widget(FigureCanvasKivyAgg(plt.gcf()))
 
             # Reassign the source of the image
@@ -249,7 +258,6 @@ class rootwi(GridLayout):
             self.ids.brightnessSlider.value = float(self.ids.brightnessTextInput.text)
 
             # Edit the image
-            img = cv2.imread("material.jpg")
             beta = self.ids.brightnessSlider.value # Contrast control (1.0-3.0)
             adjusted = cv2.convertScaleAbs(img, alpha=((2.0 * (self.ids.contrastSlider.value / 100)) + 1.0), beta=beta)
             cv2.imwrite("./out.png", adjusted)
