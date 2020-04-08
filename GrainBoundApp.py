@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 from kivy.app import App
 
 from kivy.uix.label import Label
+from kivy.graphics.texture import Texture
 from kivy.uix.popup import Popup
 from kivy.uix.button import Button
 from kivy.uix.image import Image
@@ -28,20 +29,25 @@ from kivy.base import Builder
 from kivy.properties import StringProperty
 from kivy.graphics import Color, Rectangle
 
-# TODO: Remove Gamma (unless you can figure it out), Make Brightness and Contrast start at 50%, and then for the metadata, show dimension size and other data, and on the image show magnification. DM3 file should have image
+# TODO: Remove Gamma (unless you can figure it out), and then for the metadata show dimension size and other data, and on the image show magnification
 
 #For DM3
 import DM3lib as dm3
 
-# This loads all of the data from hte dm3 file
+# This loads all of the data from the dm3 file; Make this dynamic later
 dm3f = dm3.DM3("example.dm3")
-print dm3f.tags
 
-# Read the image so we don't repeat unnecessary work (read in greyscale)
-img = cv2.imread("material.jpg", 0)
+# Plot the imagedata using plt and save it
+plt.figure(frameon=False)
+plt.imshow(dm3f.imagedata[0], cmap='gray')
+plt.axis('off')
+plt.savefig("material.png", bbox_inches='tight')
+
+# Read the image in cv2
+img = cv2.imread("./material.png", 0)
 
 # This creates the plot for the historgram
-plt.plot([1, 23, 2, 4])
+#plt.matshow(dm3f)
 plt.ylabel("Number of Pixels")
 plt.xlabel('Grey Levels')
 
@@ -74,7 +80,7 @@ Builder.load_string("""
 
         Image:
             size_hint_y: None
-            source:"./material.jpg"
+            source:"./material.png"
             id: material
             height: 600
             width: 600
@@ -96,7 +102,7 @@ Builder.load_string("""
 
         Slider:
             id: brightnessSlider
-            min: 0
+            min: -100
             max: 100
             step: 1
             value: 0.0
@@ -130,7 +136,7 @@ Builder.load_string("""
 
         Slider:
             id: gammaSlider
-            min: 0
+            min: -100
             max: 100
             step: 1
             value: 0.0
@@ -158,7 +164,7 @@ Builder.load_string("""
 
         Slider:
             id: contrastSlider
-            min: 0
+            min: -100
             max: 100
             step: 1
             value: 0.0
@@ -215,6 +221,8 @@ class CustomLayout(GridLayout):
 
 class rootwi(GridLayout):
 
+    #def __init__(self, **kwargs):
+
     def showData(self):
         popup = Popup(title='Metadata', content=Label(text=str(dm3f.info)), size_hint=(None, None), size=(400, 400))
         popup.open()
@@ -233,7 +241,7 @@ class rootwi(GridLayout):
             self.ids.contrastSlider.value = float(self.ids.contrastTextInput.text)
 
             # Edit the image
-            alpha = (2.0 * (self.ids.contrastSlider.value / 100)) + 1.0 # Contrast control (1.0-3.0)
+            alpha = (1.0 * (self.ids.contrastSlider.value / 100)) + 1.0 # Contrast control (1.0-3.0)
             adjusted = cv2.convertScaleAbs(img, alpha=alpha, beta=self.ids.brightnessSlider.value)
             cv2.imwrite("./out.png", adjusted)
 
@@ -275,7 +283,6 @@ class rootwi(GridLayout):
             self.ids.gammaSlider.value = float(self.ids.gammaTextInput.text) 
 
             # Edit the image
-            img = cv2.imread("material.jpg")
             gamma = 0.2 #self.ids.gammaSlider.value / 100 # Contrast control (1.0-3.0)
             adjusted = adjust_gamma(img, gamma=gamma)
             cv2.imwrite("./out.png", adjusted)
@@ -289,8 +296,6 @@ class rootwi(GridLayout):
 
 class MyApp(App):
     def build(self):
-        # Eventually make a method here to delete the temp directory
-        self.ids.histogram.add_widget(FigureCanvasKivyAgg(plt.gcf()))
         return rootwi()
 
 class GBApp(App):
