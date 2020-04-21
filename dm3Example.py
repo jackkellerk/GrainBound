@@ -1,21 +1,36 @@
-#For DM3
-import DM3lib as dm3
-import matplotlib.pyplot as plt
-import os.path
-from PIL import Image
-import numpy as np
+import multiprocessing
+from kivy.lang import Builder
+from kivy.app import App
+from kivy.uix.button import Button
+from kivy.uix.label import Label
+from kivy.uix.widget import Widget
 
-# This loads all of the data from hte dm3 file
-dm3f = dm3.DM3("example.dm3")
-print dm3f.tags
-print "pixel size = %s %s"%dm3f.pxsize
+class MainRoot(Widget):
+    pass
 
-p = plt.matshow(dm3f.imagedata[0])
-#p = plt.plot([1, 23, 2, 4])
-plt.axis('off')
-plt.show()
+class OtherRoot(Widget):
+    pass
 
-# - save as PNG and JPG
-#for i in range()
-#im_dsp = Image.fromarray(dm3f.imagedata[0])
-#im_dsp.save(os.path.join("save.png"))
+class MainApp(App):
+    def build(self):
+        Builder.load_string("""""")
+        main = MainRoot()
+        return main
+
+class OtherApp(App):
+    def build(self):
+        Builder.load_string("""""")
+        other = OtherRoot()
+        return other
+
+def open_parent():
+    MainApp().run()
+
+def open_child():
+    OtherApp().run()
+
+if __name__ == '__main__':
+    a = multiprocessing.Process(target=open_parent)
+    b = multiprocessing.Process(target=open_child)
+    a.start()
+    b.start()

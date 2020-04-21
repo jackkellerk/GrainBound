@@ -1,41 +1,42 @@
-#To go to python 2.7 'source C:/Python27/temp-python/Scripts/activate' then 'python GrainBoundApp.py'
-#For clients, make an install bash file to install python 2.7 for them and all of the dependencies in my current python 2.7 version. Make sure about this because this took forever!
+# <----Summary---->
+# To go to python 2.7 'source C:/Python27/temp-python/Scripts/activate' then 'python GrainBoundApp.py'
+# For clients, make an install bash file to install python 2.7 for them and all of the dependencies in my current python 2.7 version. Make sure about this because this took forever!
+# <----End of Summary---->
 
+
+#<----Dependencies---->
 import kivy
-kivy.require('1.10.1') #current kivy version
-
-# For Image contrast, brightness, gamma changing
-import cv2
-import numpy as np
-import os
-from kivy.garden.matplotlib.backend_kivyagg import FigureCanvasKivyAgg
-import matplotlib.pyplot as plt
-
+kivy.require('1.10.1')
 from kivy.app import App
-
 from kivy.uix.label import Label
+from kivy.uix.widget import Widget
+from kivy.uix.button import Button
+from kivy.lang import Builder
 from kivy.graphics.texture import Texture
 from kivy.uix.popup import Popup
-from kivy.uix.button import Button
 from kivy.uix.image import Image
 from kivy.uix.image import AsyncImage
 from kivy.uix.textinput import TextInput
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.floatlayout import FloatLayout
-
-from kivy.lang import Builder
 from kivy.base import Builder
 from kivy.properties import StringProperty
 from kivy.graphics import Color, Rectangle
+# from kivy.garden.matplotlib.backend_kivyagg import FigureCanvasKivyAgg This breaks multiprocessing
 
-# TODO: Remove Gamma (unless you can figure it out), and then for the metadata show dimension size and other data, and on the image show magnification
-
-#For DM3
+import cv2
+import numpy as np
+import os
+import multiprocessing
 import DM3lib as dm3
+import matplotlib.pyplot as plt
+#<----End of Dependencies---->
 
+
+#<----Code that runs when GBApp starts---->
 # This loads all of the data from the dm3 file; Make this dynamic later
-dm3f = dm3.DM3("example.dm3")
+dm3f = dm3.DM3("./Data/example.dm3")
 
 # Plot the imagedata using plt and save it
 plt.figure(frameon=False)
@@ -50,8 +51,89 @@ img = cv2.imread("./material.png", 0)
 #plt.matshow(dm3f)
 plt.ylabel("Number of Pixels")
 plt.xlabel('Grey Levels')
+#<----End of code that runs when GBApp starts---->
 
-Builder.load_string("""
+
+# TODO: Remove Gamma (unless you can figure it out), and then for the metadata show dimension size and other data, and on the image show magnification
+
+class rootwi(GridLayout):
+    #def showData(self):
+        #execfile('auxillaryWindow.py')
+
+    def adjust_gamma(self, image, gamma=1.0):
+        invGamma = 1.0 / gamma
+        table = np.array([((i / 255.0) ** invGamma) * 255
+            for i in np.arange(0, 256)]).astype("uint8")
+
+        return cv2.LUT(image, table)
+
+    def contrastUpdate(self):
+        try:
+            # Make sure the input is a float
+            self.ids.contrastSlider.value = float(self.ids.contrastTextInput.text)
+
+            # Edit the image
+            alpha = (1.0 * (self.ids.contrastSlider.value / 100)) + 1.0 # Contrast control (1.0-3.0)
+            adjusted = cv2.convertScaleAbs(img, alpha=alpha, beta=self.ids.brightnessSlider.value)
+            cv2.imwrite("./out.png", adjusted)
+
+            # Update the historgram
+            #lst =[]
+            plt.clf()
+            plt.plot()
+            for child in self.ids.histogram.children:
+                self.ids.histogram.remove_widget(child)
+            self.ids.histogram.add_widget(FigureCanvasKivyAgg(plt.gcf()))
+
+            # Reassign the source of the image
+            self.ids.material.source = "./out.png"
+            self.ids.material.reload()
+        except:
+            # If input is not a float, reset text to original value
+            self.ids.contrastTextInput.text = str(self.ids.contrastSlider.value)
+
+    def brightnessUpdate(self):
+        try:
+            # Make sure the input is a float
+            self.ids.brightnessSlider.value = float(self.ids.brightnessTextInput.text)
+
+            # Edit the image
+            beta = self.ids.brightnessSlider.value # Contrast control (1.0-3.0)
+            adjusted = cv2.convertScaleAbs(img, alpha=((2.0 * (self.ids.contrastSlider.value / 100)) + 1.0), beta=beta)
+            cv2.imwrite("./out.png", adjusted)
+
+            # Reassign the source of the image
+            self.ids.material.source = "./out.png"
+            self.ids.material.reload()
+        except:
+            # If input is not a float, reset text to original value
+            self.ids.brightnessTextInput.text = str(self.ids.brightnessSlider.value)
+
+    def gammaUpdate(self):
+        try:
+            # Make sure the input is a float
+            self.ids.gammaSlider.value = float(self.ids.gammaTextInput.text) 
+
+            # Edit the image
+            gamma = 0.2 #self.ids.gammaSlider.value / 100 # Contrast control (1.0-3.0)
+            adjusted = adjust_gamma(img, gamma=gamma)
+            cv2.imwrite("./out.png", adjusted)
+
+            # Reassign the source of the image
+            self.ids.material.source = "./out.png"
+            self.ids.material.reload()
+        except:
+            # If input is not a float, reset text to original value
+            self.ids.gammaTextInput.text = str(self.ids.gammaSlider.value)
+
+class WinRoot(Widget):
+    pass
+
+
+class GBApp(App):
+    def build(self):
+        self.title = "GrainBound Application"
+        Builder.load_string("""
 <rootwi>:
     orientation:'vertical'
 
@@ -60,20 +142,20 @@ Builder.load_string("""
 
         canvas:
             Rectangle:
-                source:"/Users/nkt/Desktop/GrainBound/whitebg.png"
+                source:"/Users/nkt/Desktop/GrainBound/Images/whitebg.png"
                 pos: 0, 0
                 size: root.width, root.height
 
         Image:
             size_hint_y: None
-            source:"./GrainBound_Logo.png"
+            source:"./Images/GrainBound_Logo.png"
             width: 300
             allow_stretch: True
             pos: 50, root.height-150
 
         Image:
             size_hint_y: None
-            source:"./logo_graphic.png"
+            source:"./Images/logo_graphic.png"
             height: 225
             width: 225
             pos: 215, root.height-230
@@ -202,105 +284,23 @@ Builder.load_string("""
             on_press: root.showData()
 
 """)
-
-class CustomLayout(GridLayout):
-    def __init__(self, **kwargs):
-        # make sure we aren't overriding any important functionality
-        super(CustomLayout, self).__init__(**kwargs)
-
-        with self.canvas.before:
-            Color(1, 1, 1, 1)  # green; colors range from 0-1 instead of 0-255
-            self.rect = Rectangle(size=self.size, pos=self.pos)
-
-        self.bind(size=self._update_rect, pos=self._update_rect)
-
-    def _update_rect(self, instance, value):
-        self.rect.pos = instance.pos
-        self.rect.size = instance.size
-
-
-class rootwi(GridLayout):
-
-    #def __init__(self, **kwargs):
-
-    def showData(self):
-        popup = Popup(title='Metadata', content=Label(text=str(dm3f.info)), size_hint=(None, None), size=(400, 400))
-        popup.open()
-
-    def adjust_gamma(image, gamma=1.0):
-
-        invGamma = 1.0 / gamma
-        table = np.array([((i / 255.0) ** invGamma) * 255
-            for i in np.arange(0, 256)]).astype("uint8")
-
-        return cv2.LUT(image, table)
-
-    def contrastUpdate(self):
-        try:
-            # Make sure the input is a float
-            self.ids.contrastSlider.value = float(self.ids.contrastTextInput.text)
-
-            # Edit the image
-            alpha = (1.0 * (self.ids.contrastSlider.value / 100)) + 1.0 # Contrast control (1.0-3.0)
-            adjusted = cv2.convertScaleAbs(img, alpha=alpha, beta=self.ids.brightnessSlider.value)
-            cv2.imwrite("./out.png", adjusted)
-
-            # Update the historgram
-            #lst =[]
-            plt.clf()
-            plt.plot()
-            for child in self.ids.histogram.children:
-                self.ids.histogram.remove_widget(child)
-            self.ids.histogram.add_widget(FigureCanvasKivyAgg(plt.gcf()))
-
-            # Reassign the source of the image
-            self.ids.material.source = "./out.png"
-            self.ids.material.reload()
-        except:
-            # If input is not a float, reset text to original value
-            self.ids.contrastTextInput.text = str(self.ids.contrastSlider.value)
-
-    def brightnessUpdate(self):
-        try:
-            # Make sure the input is a float
-            self.ids.brightnessSlider.value = float(self.ids.brightnessTextInput.text)
-
-            # Edit the image
-            beta = self.ids.brightnessSlider.value # Contrast control (1.0-3.0)
-            adjusted = cv2.convertScaleAbs(img, alpha=((2.0 * (self.ids.contrastSlider.value / 100)) + 1.0), beta=beta)
-            cv2.imwrite("./out.png", adjusted)
-
-            # Reassign the source of the image
-            self.ids.material.source = "./out.png"
-            self.ids.material.reload()
-        except:
-            # If input is not a float, reset text to original value
-            self.ids.brightnessTextInput.text = str(self.ids.brightnessSlider.value)
-
-    def gammaUpdate(self):
-        try:
-            # Make sure the input is a float
-            self.ids.gammaSlider.value = float(self.ids.gammaTextInput.text) 
-
-            # Edit the image
-            gamma = 0.2 #self.ids.gammaSlider.value / 100 # Contrast control (1.0-3.0)
-            adjusted = adjust_gamma(img, gamma=gamma)
-            cv2.imwrite("./out.png", adjusted)
-
-            # Reassign the source of the image
-            self.ids.material.source = "./out.png"
-            self.ids.material.reload()
-        except:
-            # If input is not a float, reset text to original value
-            self.ids.gammaTextInput.text = str(self.ids.gammaSlider.value)
-
-class MyApp(App):
-    def build(self):
         return rootwi()
 
-class GBApp(App):
+class GBWinApp(App):
     def build(self):
-        return rootwi()
+        # Make the title become the file name
+        self.title = "example.dm3"
+        Builder.load_string("""""")
+        return WinRoot()
+
+def open_window():
+    GBWinApp().run()
+
+def open_app():
+    GBApp().run()
 
 if __name__ == "__main__":
-    GBApp().run()
+    a = multiprocessing.Process(target=open_app)
+    b = multiprocessing.Process(target=open_window)
+    a.start()
+    b.start()
