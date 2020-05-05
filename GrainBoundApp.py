@@ -3,6 +3,8 @@
 # For clients, make an install bash file to install python 2.7 for them and all of the dependencies in my current python 2.7 version. Make sure about this because this took forever!
 # <----End of Summary---->
 
+# !/usr/bin/python
+# coding=utf-8
 
 #<----Dependencies---->
 import kivy
@@ -29,6 +31,7 @@ import cv2
 import numpy as np
 import os
 import psutil
+import time
 from multiprocessing import Process, Pool
 import DM3lib as dm3
 import matplotlib.pyplot as plt
@@ -43,24 +46,20 @@ dm3f = dm3.DM3("./Data/example.dm3")
 plt.figure(frameon=False)
 plt.imshow(dm3f.imagedata[0], cmap='gray')
 plt.axis('off')
-plt.savefig("material.png", bbox_inches='tight')
+plt.gca().set_axis_off()
+plt.gca().xaxis.set_major_locator(plt.NullLocator())
+plt.gca().yaxis.set_major_locator(plt.NullLocator())
+plt.subplots_adjust(top = 1, bottom = 0, right = 1, left = 0, 
+            hspace = 0, wspace = 0)
+plt.savefig("material.png", bbox_inches='tight', pad_inches=-0.035)
 
 # Read the image in cv2
 img = cv2.imread("./material.png", 0)
-
-# This creates the plot for the historgram
-# plt.matshow(dm3f)
-plt.ylabel("Number of Pixels")
-plt.xlabel('Grey Levels')
-
-# Global variables
-# Used to hold the processes of each window to kill later
-a = None
-b = None
 #<----End of code that runs when GBApp starts---->
 
 
 # TODO: Remove Gamma (unless you can figure it out), and then for the metadata show dimension size and other data, and on the image show magnification
+# TODO: Make second window always on top. Thinking I can do this once we port it to Windows.
 
 class rootwi(GridLayout):
     def showData(self):   
@@ -301,8 +300,11 @@ class GBApp(App):
 
     # When the current window closes, close the other window
     def on_stop(self):
-        p = psutil.Process(os.getpid()+1)
-        p.terminate()
+        try:
+            p = psutil.Process(os.getpid()+1)
+            p.terminate()
+        except:
+            print "Closed successfully"
 
 class GBWinApp(App):
     def build(self):
@@ -319,9 +321,18 @@ class GBWinApp(App):
             size_hint_y: None
             source:"./material.png"
             id: material
-            height: 600
-            width: 600
-            pos: -100, -100
+            height: 627
+            width: 665
+            keep_ratio: False
+            allow_stretch: True
+
+        Label:
+            id: relativeSize
+            text: "1 " + u'\u03BC' + "m"
+            font_size: 20
+            pos: 0, -15
+            color: (1,1,1,1)
+            
 """)
         return WinRoot()
     
@@ -330,8 +341,12 @@ class GBWinApp(App):
     
     # When the current window closes, close the other window
     def on_stop(self):
-        p = psutil.Process(os.getpid()-1)
-        p.terminate()
+        try:
+            p = psutil.Process(os.getpid()-1)
+            p.terminate()
+        except:
+            print "Closed successfully"
+
     
 
 def open_window():
@@ -343,9 +358,17 @@ def open_app():
 if __name__ == "__main__":
     a = Process(target=open_app)
     b = Process(target=open_window)
+    Config.set('graphics', 'position', 'custom')
+    Config.set('graphics', 'left', 0)
+    Config.set('graphics', 'top',  0)
+    Config.set('graphics', 'width', '1280')
+    Config.set('graphics', 'height', '960')
     a.start()
-    Config.set('graphics','resizable', 0)
+    time.sleep(0.05) # This ensures that the second window appears on top
+    Config.set('graphics', 'left', 500)
+    Config.set('graphics', 'top',  300)
+    Config.set('graphics', 'width', '665')
+    Config.set('graphics', 'height', '627')
     Config.set('graphics', 'window_state', 'maximized')
-    Config.set('graphics', 'width', '410')
-    Config.set('graphics', 'height', '410')
+    Config.set('graphics','resizable', 0)
     b.start()
