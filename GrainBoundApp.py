@@ -61,6 +61,7 @@ img = cv2.imread("./material.png", 0)
 
 # TODO: Remove Gamma (unless you can figure it out), and then for the metadata show dimension size and other data, and on the image show magnification
 # TODO: Make second window always on top. Thinking I can do this once we port it to Windows.
+# TODO: Make small window update as you make changes in the big window. See if it is possible to make small windows ad hoc. Also, if there is time, make a zoom feature for the small window.
 
 class rootwi(GridLayout):
     def showData(self):   
