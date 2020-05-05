@@ -22,13 +22,14 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.floatlayout import FloatLayout
 from kivy.base import Builder
 from kivy.properties import StringProperty
-from kivy.graphics import Color, Rectangle
-# from kivy.garden.matplotlib.backend_kivyagg import FigureCanvasKivyAgg This breaks multiprocessing
+from kivy.graphics import *
+from kivy.config import Config
 
 import cv2
 import numpy as np
 import os
-import multiprocessing
+import psutil
+from multiprocessing import Process, Pool
 import DM3lib as dm3
 import matplotlib.pyplot as plt
 #<----End of Dependencies---->
@@ -48,17 +49,22 @@ plt.savefig("material.png", bbox_inches='tight')
 img = cv2.imread("./material.png", 0)
 
 # This creates the plot for the historgram
-#plt.matshow(dm3f)
+# plt.matshow(dm3f)
 plt.ylabel("Number of Pixels")
 plt.xlabel('Grey Levels')
+
+# Global variables
+# Used to hold the processes of each window to kill later
+a = None
+b = None
 #<----End of code that runs when GBApp starts---->
 
 
 # TODO: Remove Gamma (unless you can figure it out), and then for the metadata show dimension size and other data, and on the image show magnification
 
 class rootwi(GridLayout):
-    #def showData(self):
-        #execfile('auxillaryWindow.py')
+    def showData(self):   
+        GBWinApp.update()
 
     def adjust_gamma(self, image, gamma=1.0):
         invGamma = 1.0 / gamma
@@ -79,15 +85,16 @@ class rootwi(GridLayout):
 
             # Update the historgram
             #lst =[]
-            plt.clf()
-            plt.plot()
-            for child in self.ids.histogram.children:
-                self.ids.histogram.remove_widget(child)
-            self.ids.histogram.add_widget(FigureCanvasKivyAgg(plt.gcf()))
+            #plt.clf()
+            #plt.plot()
+            #for child in self.ids.histogram.children:
+                #self.ids.histogram.remove_widget(child)
+            #self.ids.histogram.add_widget(FigureCanvasKivyAgg(plt.gcf()))
 
             # Reassign the source of the image
             self.ids.material.source = "./out.png"
             self.ids.material.reload()
+            WinRoot().updateImage()
         except:
             # If input is not a float, reset text to original value
             self.ids.contrastTextInput.text = str(self.ids.contrastSlider.value)
@@ -105,6 +112,7 @@ class rootwi(GridLayout):
             # Reassign the source of the image
             self.ids.material.source = "./out.png"
             self.ids.material.reload()
+            WinRoot().updateImage()
         except:
             # If input is not a float, reset text to original value
             self.ids.brightnessTextInput.text = str(self.ids.brightnessSlider.value)
@@ -122,12 +130,17 @@ class rootwi(GridLayout):
             # Reassign the source of the image
             self.ids.material.source = "./out.png"
             self.ids.material.reload()
+            WinRoot().updateImage()
         except:
             # If input is not a float, reset text to original value
             self.ids.gammaTextInput.text = str(self.ids.gammaSlider.value)
 
-class WinRoot(Widget):
-    pass
+class WinRoot(GridLayout):
+    def updateImage(self):
+        # Reassign the source of the image
+        print "Hello World"
+        self.ids.material.source = "./out.png"
+        self.ids.material.reload()
 
 
 class GBApp(App):
@@ -286,12 +299,40 @@ class GBApp(App):
 """)
         return rootwi()
 
+    # When the current window closes, close the other window
+    def on_stop(self):
+        p = psutil.Process(os.getpid()+1)
+        p.terminate()
+
 class GBWinApp(App):
     def build(self):
         # Make the title become the file name
         self.title = "example.dm3"
-        Builder.load_string("""""")
+        Builder.load_string("""
+<WinRoot>:
+    orientation:'vertical'
+
+    GridLayout:
+        padding:0
+
+        Image:
+            size_hint_y: None
+            source:"./material.png"
+            id: material
+            height: 600
+            width: 600
+            pos: -100, -100
+""")
         return WinRoot()
+    
+    def update(self):
+        WinRoot().updateImage()
+    
+    # When the current window closes, close the other window
+    def on_stop(self):
+        p = psutil.Process(os.getpid()-1)
+        p.terminate()
+    
 
 def open_window():
     GBWinApp().run()
@@ -300,7 +341,11 @@ def open_app():
     GBApp().run()
 
 if __name__ == "__main__":
-    a = multiprocessing.Process(target=open_app)
-    b = multiprocessing.Process(target=open_window)
+    a = Process(target=open_app)
+    b = Process(target=open_window)
     a.start()
+    Config.set('graphics','resizable', 0)
+    Config.set('graphics', 'window_state', 'maximized')
+    Config.set('graphics', 'width', '410')
+    Config.set('graphics', 'height', '410')
     b.start()
