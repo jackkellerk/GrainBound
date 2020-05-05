@@ -26,13 +26,14 @@ from kivy.base import Builder
 from kivy.properties import StringProperty
 from kivy.graphics import *
 from kivy.config import Config
+from kivy.clock import Clock
 
 import cv2
 import numpy as np
 import os
 import psutil
 import time
-from multiprocessing import Process, Pool
+from multiprocessing import Process
 import DM3lib as dm3
 import matplotlib.pyplot as plt
 #<----End of Dependencies---->
@@ -63,7 +64,7 @@ img = cv2.imread("./material.png", 0)
 
 class rootwi(GridLayout):
     def showData(self):   
-        GBWinApp.update()
+        print "Show Metadata"
 
     def adjust_gamma(self, image, gamma=1.0):
         invGamma = 1.0 / gamma
@@ -93,7 +94,6 @@ class rootwi(GridLayout):
             # Reassign the source of the image
             self.ids.material.source = "./out.png"
             self.ids.material.reload()
-            WinRoot().updateImage()
         except:
             # If input is not a float, reset text to original value
             self.ids.contrastTextInput.text = str(self.ids.contrastSlider.value)
@@ -111,7 +111,6 @@ class rootwi(GridLayout):
             # Reassign the source of the image
             self.ids.material.source = "./out.png"
             self.ids.material.reload()
-            WinRoot().updateImage()
         except:
             # If input is not a float, reset text to original value
             self.ids.brightnessTextInput.text = str(self.ids.brightnessSlider.value)
@@ -129,18 +128,9 @@ class rootwi(GridLayout):
             # Reassign the source of the image
             self.ids.material.source = "./out.png"
             self.ids.material.reload()
-            WinRoot().updateImage()
         except:
             # If input is not a float, reset text to original value
             self.ids.gammaTextInput.text = str(self.ids.gammaSlider.value)
-
-class WinRoot(GridLayout):
-    def updateImage(self):
-        # Reassign the source of the image
-        print "Hello World"
-        self.ids.material.source = "./out.png"
-        self.ids.material.reload()
-
 
 class GBApp(App):
     def build(self):
@@ -304,7 +294,18 @@ class GBApp(App):
             p = psutil.Process(os.getpid()+1)
             p.terminate()
         except:
-            print "Closed successfully"
+            print os.getpid()
+
+class WinRoot(GridLayout):
+    def start(self):
+        print "Start"
+        Clock.schedule_interval(self.updateImage, 2)
+
+    def updateImage(self):
+        # Reassign the source of the image
+        print "Hello World"
+        self.ids.material.source = "./out.png"
+        self.ids.material.reload()
 
 class GBWinApp(App):
     def build(self):
@@ -326,6 +327,16 @@ class GBWinApp(App):
             keep_ratio: False
             allow_stretch: True
 
+        Image:
+            size_hint_y: None
+            source:"./Images/rectangle.jpg"
+            id: material
+            height: 7
+            width: 70
+            pos: 25, 15
+            keep_ratio: False
+            allow_stretch: True
+
         Label:
             id: relativeSize
             text: "1 " + u'\u03BC' + "m"
@@ -335,9 +346,10 @@ class GBWinApp(App):
             
 """)
         return WinRoot()
-    
-    def update(self):
-        WinRoot().updateImage()
+
+    def on_start(self):
+        #WinRoot().start()
+        pass
     
     # When the current window closes, close the other window
     def on_stop(self):
@@ -345,7 +357,7 @@ class GBWinApp(App):
             p = psutil.Process(os.getpid()-1)
             p.terminate()
         except:
-            print "Closed successfully"
+            print os.getpid()
 
     
 
@@ -364,7 +376,7 @@ if __name__ == "__main__":
     Config.set('graphics', 'width', '1280')
     Config.set('graphics', 'height', '960')
     a.start()
-    time.sleep(0.05) # This ensures that the second window appears on top
+    time.sleep(0.04) # This ensures that the second window appears on top
     Config.set('graphics', 'left', 500)
     Config.set('graphics', 'top',  300)
     Config.set('graphics', 'width', '665')
