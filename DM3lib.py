@@ -734,7 +734,7 @@ class DM3(object):
                     print "Notice: image %s/%s is read" % (m+1, im_depth)
                 self._f.seek(data_offset + (im_width*im_height*4*m))
                 rawdata = self._f.read(data_size)
-                im.append(Image.fromstring( 'F', (im_width, im_height), rawdata,
+                im.append(Image.frombytes( 'F', (im_width, im_height), rawdata,
                                        'raw', decoder ))
 
             if self.debug > 0:

@@ -13,7 +13,7 @@ from PIL import Image
 # <summary> 
 # Code executed before PySimpleGUI
 # </summary>
-img = Image.open('./Images/logo.png')
+img = Image.open('./Images/GrainBound_Logo.png')
 nw = 320
 nh = 180
 img = img.resize((nw, nh), Image.ANTIALIAS)

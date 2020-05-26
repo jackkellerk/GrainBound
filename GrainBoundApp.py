@@ -4,8 +4,13 @@
 # Dependencies
 # </summary>
 from Tkinter import *
+import tkMessageBox
+import os, shutil, time
 import tkFileDialog
 from PIL import ImageTk, Image
+import DM3lib as dm3
+import matplotlib.pyplot as plt
+import numpy as np
 # <summary>
 # End of dependencies
 # </summary>
@@ -13,6 +18,11 @@ from PIL import ImageTk, Image
 # <summary>
 # Code before tkinter code
 # </summary>
+
+# Global variables
+projectName = 'Untitled Project'
+projectDir = "./"
+matarr = []
 
 # <summary>
 # End of code before tkinter code
@@ -24,14 +34,50 @@ from PIL import ImageTk, Image
 def todo():
     print "TODO"
 
+def quit():
+    if tkMessageBox.askokcancel("Quit", "Do you really wish to quit?"):
+        shutil.rmtree('./temp', ignore_errors=True) # This removes the temp file
+        root.quit()
+
 # Create dm3 file window
 def openMaterial():
+    # File browser and creating window
     fileDir = tkFileDialog.askopenfilename(initialdir="/", title="Select a material", filetypes=(("dm3 files", "*.dm3"), ("all files", "*.*")))
-    fileName = fileDir.split('/')
+    fileNameArr = fileDir.split('/')
+    fileName = fileNameArr[len(fileNameArr)-1]
     window = Toplevel()
     window.attributes('-topmost', 'true')
-    window.title(fileName[len(fileName)-1])
-    window.geometry("500x500")
+    window.title(fileName)
+    window.geometry("600x600+700+300")
+
+    # Create the dm3 image
+    dm3f = dm3.DM3(fileDir)
+
+    plt.figure(frameon=False)
+    plt.imshow(dm3f.imagedata[0], cmap='gray')
+    plt.axis('off')
+    plt.gca().set_axis_off()
+    plt.gca().xaxis.set_major_locator(plt.NullLocator())
+    plt.gca().yaxis.set_major_locator(plt.NullLocator())
+    plt.subplots_adjust(top = 1, bottom = 0, right = 1, left = 0, hspace = 0, wspace = 0)
+
+    if projectName == 'Untitled Project':
+        if os.path.isdir("./temp/") != True:
+            os.mkdir('./temp/')
+
+        plt.savefig("./temp/" + fileName + ".jpg", bbox_inches='tight', pad_inches=-0.035)
+
+        mat_img = ImageTk.PhotoImage(Image.open("./temp/" + fileName + ".jpg").resize((600,600), Image.ANTIALIAS))
+        matarr.append(mat_img)
+        mat = Label(window, image=matarr[len(matarr)-1], bg='white')
+        mat.pack(side="top", fill="both", expand="yes")
+        mat.place(relx=0, rely=0, anchor='nw')
+
+    else:
+        plt.savefig(projectDir + "/" + fileName, bbox_inches='tight', pad_inches=-0.035)
+    
+    #window.mainloop()
+
 # <summary>
 # End of custom tkinter function code
 # </summary>
@@ -39,11 +85,11 @@ def openMaterial():
 # <summary>
 # Tkinter layout code
 # </summary>
-# Creating the window
 root = Tk()
 root.title('GrainBound')
 root.geometry("1280x800")
 root.configure(background='#FFFFFF')
+root.protocol("WM_DELETE_WINDOW", quit)
 
 # Creating the menubar
 menubar = Menu(root)
@@ -58,7 +104,7 @@ filemenu.add_command(label="Open material", command=openMaterial)
 filemenu.add_command(label="Save material", command=todo)
 filemenu.add_command(label="Save material as", command=todo)
 filemenu.add_separator()
-filemenu.add_command(label="Exit", command=root.quit)
+filemenu.add_command(label="Exit", command=quit)
 
 helpmenu = Menu(menubar, tearoff=0)
 helpmenu.add_command(label="About", command=todo)
