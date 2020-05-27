@@ -23,8 +23,7 @@ import numpy as np
 projectName = 'Untitled Project'
 projectDir = "./temp/"
 madeActionBeforeLastSave = False # This variable is used to determine whether closing the program should prompt the user to save
-matarr = {} # This is a dictionary, the keys are the names of the windows, and the values are the images associated with them
-windowarr = {} # This is a dictionary, the keys are the names of the windows, and the values are the window instances
+windowarr = {} # This is a dictionary, the keys are the names of the windows, and the values are the window classes
 
 # <summary>
 # End of code before tkinter code
@@ -34,8 +33,10 @@ windowarr = {} # This is a dictionary, the keys are the names of the windows, an
 # Each material window class
 # </summary>
 class materialWindow:
-    def __init__(self, name, windowInstance, tool='Imaging', brightness=0.5, contrast=0.5, gamma=0.5, madeChangeBeforeSaving=True):
+    def __init__(self, name, windowInstance, TkImage, imageURL=None, tool='Imaging', brightness=0.5, contrast=0.5, gamma=0.5, madeChangeBeforeSaving=True):
         self.madeChangeBeforeSaving = madeChangeBeforeSaving
+        self.TkImage = TkImage
+        self.imageURL = imageURL
         self.name = name
         self.tool = tool
         self.brightness = brightness
@@ -55,9 +56,12 @@ def todo():
 # Called before root window quits
 def quit():
     # quit dialog check
-    if madeActionBeforeLastSave and tkMessageBox.askokcancel("Quit", "You have unsaved work, do you still wish to quit?"):
-        shutil.rmtree('./temp', ignore_errors=True) # This removes the temp file
-        root.quit()
+    if madeActionBeforeLastSave:
+        if tkMessageBox.askokcancel("Quit", "You have unsaved work, do you still wish to quit?"):
+            shutil.rmtree('./temp', ignore_errors=True) # This removes the temp file
+            root.quit()
+        else:
+            return
     else:
         shutil.rmtree('./temp', ignore_errors=True) # This removes the temp file, just in case it still exists
         root.quit()
@@ -76,18 +80,40 @@ def updateWindowMenu(name):
     if name in windowarr:
         windowmenu.delete(name)
     else:
-        windowmenu.add_command(label=name, command=lambda: windowarr.get(name).windowInstance.focus_force())
+        windowmenu.add_command(label=name, command=lambda: bringWindowToFront(name))
+
+# Helper function for updateWindowMenu (above)
+def bringWindowToFront(name):
+    windowarr.get(name).windowInstance.focus_force() 
+    windowarr.get(name).windowInstance.lift()
 
 # Create dm3 file window
-def openMaterial():
+def openNewMaterial():
     # File browser and creating window
     fileDir = tkFileDialog.askopenfilename(initialdir="/", title="Select a material", filetypes=(("dm3 files", "*.dm3"), ("all files", "*.*")))
     fileNameArr = fileDir.split('/')
     fileName = fileNameArr[len(fileNameArr)-1]
     window = Toplevel()
-    window.attributes('-topmost', 'true')
     window.title(fileName)
-    window.geometry("600x600+700+300")
+    window.resizable(0,0)
+    window.geometry("665x665+700+300")
+
+    # Add widgets
+    moveButton = Button(window, width=4, height=3, text="Move", command=todo)
+    moveButton.pack()
+    moveButton.place(x=2, y=2)
+
+    annotateButton = Button(window, width=4, height=3, text="Draw", command=todo)
+    annotateButton.pack()
+    annotateButton.place(x=2, y=72)
+    
+    toolButton = Button(window, width=4, height=3, text="Change\nTool", command=todo)
+    toolButton.pack()
+    toolButton.place(x=2, y=142)
+
+    metaDataButton = Button(window, width=4, height=3, text="Meta\nData", command=todo)
+    metaDataButton.pack()
+    metaDataButton.place(x=2, y=212)
 
     # Create the dm3 image
     dm3f = dm3.DM3(fileDir)
@@ -118,26 +144,26 @@ def openMaterial():
                 window.title(fileName + " (copy " + str(x+1) + ")")
 
                 mat_img = ImageTk.PhotoImage(Image.open("./temp/" + fileName + " (copy " + str(x+1) + ")" + ".jpg").resize((600,600), Image.ANTIALIAS))
-                matarr[fileName + " (copy " + str(x+1) + ")"] = mat_img # python dictionary, inside [] is the key, the expression is equal to the value of the key
-                mat = Label(window, image=matarr[fileName + " (copy " + str(x+1) + ")"], bg='white')
-                mat.pack(side="top", fill="both", expand="yes")
-                mat.place(relx=0, rely=0, anchor='nw')
+                windowObj = materialWindow(fileName + " (copy " + str(x+1) + ")", window, mat_img) # Create window object
                 updateWindowMenu(fileName + " (copy " + str(x+1) + ")")
-                windowObj = materialWindow(fileName + " (copy " + str(x+1) + ")", window) # Create window instance
                 windowarr[fileName + " (copy " + str(x+1) + ")"] = windowObj
+                mat = Label(window, image=windowarr[fileName + " (copy " + str(x+1) + ")"].TkImage, bg='white')
+                mat.pack(side="top", fill="both", expand="yes")
+                mat.place(x=65, y=0, anchor='nw')
+                windowarr[fileName + " (copy " + str(x+1) + ")"].windowInstance = window
                 break
     else:
         plt.savefig("./temp/" + fileName + ".jpg", bbox_inches='tight', pad_inches=-0.035)
 
         mat_img = ImageTk.PhotoImage(Image.open("./temp/" + fileName + ".jpg").resize((600,600), Image.ANTIALIAS))
-        matarr[fileName] = mat_img # python dictionary, inside [] is the key, the expression is equal to the value of the key
-        mat = Label(window, image=matarr[fileName], bg='white')
-        mat.pack(side="top", fill="both", expand="yes")
-        mat.place(relx=0, rely=0, anchor='nw')
-        window.protocol("WM_DELETE_WINDOW", lambda name=fileName: matQuit(name))
+        windowObj = materialWindow(fileName, window, mat_img) # Create window object
         updateWindowMenu(fileName)
-        windowObj = materialWindow(fileName, window)
         windowarr[fileName] = windowObj
+        mat = Label(window, image=windowarr[fileName].TkImage, bg='white')
+        mat.pack(side="top", fill="both", expand="yes")
+        mat.place(x=65, y=0, anchor='nw')
+        window.protocol("WM_DELETE_WINDOW", lambda name=fileName: matQuit(name))
+        windowarr[fileName].windowInstance = window
     
     # Set this to true, so the user is prompted when attempting to close the program
     global madeActionBeforeLastSave
@@ -165,7 +191,7 @@ filemenu.add_command(label="Open project", command=todo)
 filemenu.add_command(label="Save project", command=todo)
 filemenu.add_command(label="Save project as", command=todo)
 filemenu.add_separator()
-filemenu.add_command(label="Open material", command=openMaterial)
+filemenu.add_command(label="Open material", command=openNewMaterial)
 filemenu.add_command(label="Save material", command=todo)
 filemenu.add_command(label="Save material as", command=todo)
 filemenu.add_separator()
@@ -175,7 +201,7 @@ windowmenu = Menu(menubar, tearoff=0)
 
 helpmenu = Menu(menubar, tearoff=0)
 helpmenu.add_command(label="About", command=todo)
-helpmenu.add_command(label="Contact us", command=updateWindowMenu)
+helpmenu.add_command(label="Contact us", command=todo)
 
 menubar.add_cascade(label="File", menu=filemenu)
 menubar.add_cascade(label="Edit")
