@@ -1,16 +1,17 @@
-# Dependencies for installation file: python 2.7
+# Dependencies for installation file: python 3
 
 # <summary>
 # Dependencies
 # </summary>
-from Tkinter import *
-import tkMessageBox
+from tkinter import *
+import tkinter.messagebox
 import os, shutil, time
-import tkFileDialog
+import tkinter.filedialog
 from PIL import ImageTk, Image
-import DM3lib as dm3
+from ncempy.io import dm
 import matplotlib.pyplot as plt
 import numpy as np
+import cv2
 # <summary>
 # End of dependencies
 # </summary>
@@ -18,6 +19,7 @@ import numpy as np
 # <summary>
 # Code before tkinter code
 # </summary>
+np.set_printoptions(threshold=sys.maxsize)
 
 # Global variables
 projectName = 'Untitled Project'
@@ -33,11 +35,12 @@ windowarr = {} # This is a dictionary, the keys are the names of the windows, an
 # Each material window class
 # </summary>
 class materialWindow:
-    def __init__(self, name, windowInstance, TkImage, imageURL=None, tool='Imaging', brightness=0.5, contrast=0.5, gamma=0.5, madeChangeBeforeSaving=True):
+    def __init__(self, name, windowInstance, TkImage, imageLabel=None, imageArr=None, tool='Imaging', brightness=0, contrast=float(1), gamma=0, madeChangeBeforeSaving=True):
         self.madeChangeBeforeSaving = madeChangeBeforeSaving
         self.TkImage = TkImage
-        self.imageURL = imageURL
+        self.imageArr = imageArr
         self.name = name
+        self.imageLabel = imageLabel
         self.tool = tool
         self.brightness = brightness
         self.contrast = contrast
@@ -50,14 +53,42 @@ class materialWindow:
 # <summary>
 # Custom tkinter function code
 # </summary>
-def todo():
-    print "TODO"
+def todo(debug=""):
+    print("TODO " + str(debug))
+
+# Updates the contrast in each material window; value is an integer, window is a string of the name of the window
+def updateContrast(value, window):
+    percentage = float(int(value)) / float(100)
+
+    alpha = (float(2) * percentage) + float(1) # Contrast control (1.0-3.0)
+    windowarr[window].contrast = alpha
+    adjusted = cv2.convertScaleAbs(windowarr[window].imageArr, alpha=alpha, beta=windowarr[window].brightness) # Outputs an image array
+    new_mat_img = ImageTk.PhotoImage(Image.fromarray(adjusted).resize((600,600), Image.ANTIALIAS))
+
+    windowarr[window].TkImage = new_mat_img
+    windowarr[window].imageLabel.configure(image=windowarr[window].TkImage)
+    windowarr[window].madeChangeBeforeSaving = True
+
+# Updates the brightness in each material window; value is an integer, window is a string of the name of the window
+def updateBrightness(value, window):
+    beta = float(int(value))
+    windowarr[window].brightness = beta
+    adjusted = cv2.convertScaleAbs(windowarr[window].imageArr, alpha=windowarr[window].contrast, beta=beta)
+    new_mat_img = ImageTk.PhotoImage(Image.fromarray(adjusted).resize((600,600), Image.ANTIALIAS))
+
+    windowarr[window].TkImage = new_mat_img
+    windowarr[window].imageLabel.configure(image=windowarr[window].TkImage)
+    windowarr[window].madeChangeBeforeSaving = True
+
+# TODO
+def updateGamma(value, window):
+    return
 
 # Called before root window quits
 def quit():
     # quit dialog check
     if madeActionBeforeLastSave:
-        if tkMessageBox.askokcancel("Quit", "You have unsaved work, do you still wish to quit?"):
+        if tkinter.messagebox.askokcancel("Quit", "You have unsaved work, do you still wish to quit?"):
             shutil.rmtree('./temp', ignore_errors=True) # This removes the temp file
             root.quit()
         else:
@@ -68,7 +99,7 @@ def quit():
 
 # Called before each material window quits
 def matQuit(name):
-    if windowarr.get(name).madeChangeBeforeSaving and tkMessageBox.askokcancel("Quit", "You didn't save this material, do you still wish to quit?", parent=windowarr.get(name).windowInstance):
+    if windowarr.get(name).madeChangeBeforeSaving and tkinter.messagebox.askokcancel("Quit", "You didn't save this material, do you still wish to quit?", parent=windowarr.get(name).windowInstance):
         updateWindowMenu(name)
         windowarr.get(name).windowInstance.destroy()
         windowarr.pop(name, None)
@@ -90,7 +121,7 @@ def bringWindowToFront(name):
 # Create dm3 file window
 def openNewMaterial():
     # File browser and creating window
-    fileDir = tkFileDialog.askopenfilename(initialdir="/", title="Select a material", filetypes=(("dm3 files", "*.dm3"), ("all files", "*.*")))
+    fileDir = tkinter.filedialog.askopenfilename(initialdir="/", title="Select a material", filetypes=(("dm3 files", "*.dm3"), ("all files", "*.*")))
     fileNameArr = fileDir.split('/')
     fileName = fileNameArr[len(fileNameArr)-1]
     window = Toplevel()
@@ -98,65 +129,66 @@ def openNewMaterial():
     window.resizable(0,0)
     window.geometry("665x665+700+300")
 
-    # Add widgets
-    moveButton = Button(window, width=4, height=3, text="Move", command=todo)
-    moveButton.pack()
-    moveButton.place(x=2, y=2)
-
-    annotateButton = Button(window, width=4, height=3, text="Draw", command=todo)
-    annotateButton.pack()
-    annotateButton.place(x=2, y=72)
-    
-    toolButton = Button(window, width=4, height=3, text="Change\nTool", command=todo)
-    toolButton.pack()
-    toolButton.place(x=2, y=142)
-
-    metaDataButton = Button(window, width=4, height=3, text="Meta\nData", command=todo)
-    metaDataButton.pack()
-    metaDataButton.place(x=2, y=212)
-
     # Create the dm3 image
-    dm3f = dm3.DM3(fileDir)
-
-    # Using matplotlib to save the numpy array image
-    plt.figure(frameon=False)
-    plt.imshow(dm3f.imagedata[0], cmap='gray')
-    plt.axis('off')
-    plt.gca().set_axis_off()
-    plt.gca().xaxis.set_major_locator(plt.NullLocator())
-    plt.gca().yaxis.set_major_locator(plt.NullLocator())
-    plt.subplots_adjust(top = 1, bottom = 0, right = 1, left = 0, hspace = 0, wspace = 0)
-
-    # Always save the jpg files in the temp folder, the actual image before closing is saved in the .grainbound file
-
-    # Check to see if temp folder is created yet
-    if os.path.isdir("./temp/") != True:
-        os.mkdir('./temp/')
+    dm3f = dm.dmReader(fileDir)
+    dm3f['data'] = ((dm3f['data'] * 3) / 16000) # Transforming data
 
     # Check to see if current material is open yet; if it is, make a copy of it increasing a number at the end of the file name; if not, just save it as its file name
-    if os.path.isfile("./temp/" + fileName + ".jpg"):
-        for x in range(10):
-            if(os.path.isfile("./temp/" + fileName + " (copy " + str(x+1) + ")" + ".jpg")):
+    if fileName in windowarr.keys():
+        for x in range(100):
+            if (fileName + " (copy " + str(x+1) + ")") in windowarr.keys():
                 continue
             else:
-                plt.savefig("./temp/" + fileName + " (copy " + str(x+1) + ")" + ".jpg", bbox_inches='tight', pad_inches=-0.035)
-
                 window.title(fileName + " (copy " + str(x+1) + ")")
 
-                mat_img = ImageTk.PhotoImage(Image.open("./temp/" + fileName + " (copy " + str(x+1) + ")" + ".jpg").resize((600,600), Image.ANTIALIAS))
-                windowObj = materialWindow(fileName + " (copy " + str(x+1) + ")", window, mat_img) # Create window object
+                mat_img = ImageTk.PhotoImage(Image.fromarray(dm3f['data']).resize((600,600), Image.ANTIALIAS))
+                mat_img_arr = dm3f['data']
+                windowObj = materialWindow(fileName + " (copy " + str(x+1) + ")", window, mat_img, imageArr=mat_img_arr) # Create window object
                 updateWindowMenu(fileName + " (copy " + str(x+1) + ")")
                 windowarr[fileName + " (copy " + str(x+1) + ")"] = windowObj
                 mat = Label(window, image=windowarr[fileName + " (copy " + str(x+1) + ")"].TkImage, bg='white')
                 mat.pack(side="top", fill="both", expand="yes")
                 mat.place(x=65, y=0, anchor='nw')
                 windowarr[fileName + " (copy " + str(x+1) + ")"].windowInstance = window
+                windowarr[fileName + " (copy " + str(x+1) + ")"].imageLabel = mat
+
+                # Add widgets
+                newFileName = fileName + " (copy " + str(x+1) + ")"
+                moveButton = Button(window, width=4, height=3, text="Move", command=todo)
+                moveButton.pack()
+                moveButton.place(x=2, y=2)
+
+                annotateButton = Button(window, width=4, height=3, text="Draw", command=todo)
+                annotateButton.pack()
+                annotateButton.place(x=2, y=72)
+                
+                toolButton = Button(window, width=4, height=3, text="Change\nTool", command=todo)
+                toolButton.pack()
+                toolButton.place(x=2, y=142)
+
+                metaDataButton = Button(window, width=4, height=3, text="Meta\nData", command=todo)
+                metaDataButton.pack()
+                metaDataButton.place(x=2, y=212)
+
+                contrastScale = Scale(window, from_=-100, to=100, orient=HORIZONTAL, showvalue=50, label='Contrast', command=lambda x : updateContrast(x, newFileName))
+                contrastScale.set(0)
+                contrastScale.pack()
+                contrastScale.place(x=130, y=600)
+
+                brightnessScale = Scale(window, from_=-100, to=100, showvalue=50, orient=HORIZONTAL, label='Brightness', command=lambda x : updateBrightness(x, newFileName))
+                brightnessScale.set(0)
+                brightnessScale.pack()
+                brightnessScale.place(x=310, y=600)
+
+                gammaScale = Scale(window, from_=-100, to=100, orient=HORIZONTAL, showvalue=50, label='Gamma', command=todo)
+                gammaScale.set(0)
+                gammaScale.pack()
+                gammaScale.place(x=490, y=600)
                 break
     else:
-        plt.savefig("./temp/" + fileName + ".jpg", bbox_inches='tight', pad_inches=-0.035)
-
-        mat_img = ImageTk.PhotoImage(Image.open("./temp/" + fileName + ".jpg").resize((600,600), Image.ANTIALIAS))
-        windowObj = materialWindow(fileName, window, mat_img) # Create window object
+        mat_img = ImageTk.PhotoImage(Image.fromarray(dm3f['data']).resize((600,600), Image.ANTIALIAS))
+        mat_img_arr = dm3f['data']
+        windowObj = materialWindow(fileName, window, mat_img, imageArr=mat_img_arr) # Create window object
         updateWindowMenu(fileName)
         windowarr[fileName] = windowObj
         mat = Label(window, image=windowarr[fileName].TkImage, bg='white')
@@ -164,6 +196,39 @@ def openNewMaterial():
         mat.place(x=65, y=0, anchor='nw')
         window.protocol("WM_DELETE_WINDOW", lambda name=fileName: matQuit(name))
         windowarr[fileName].windowInstance = window
+        windowarr[fileName].imageLabel = mat
+
+        # Add widgets
+        moveButton = Button(window, width=4, height=3, text="Move", command=todo)
+        moveButton.pack()
+        moveButton.place(x=2, y=2)
+
+        annotateButton = Button(window, width=4, height=3, text="Draw", command=todo)
+        annotateButton.pack()
+        annotateButton.place(x=2, y=72)
+        
+        toolButton = Button(window, width=4, height=3, text="Change\nTool", command=todo)
+        toolButton.pack()
+        toolButton.place(x=2, y=142)
+
+        metaDataButton = Button(window, width=4, height=3, text="Meta\nData", command=todo)
+        metaDataButton.pack()
+        metaDataButton.place(x=2, y=212)
+
+        contrastScale = Scale(window, from_=-100, to=100, orient=HORIZONTAL, showvalue=50, label='Contrast', command=lambda x : updateContrast(x, fileName))
+        contrastScale.set(0)
+        contrastScale.pack()
+        contrastScale.place(x=130, y=600)
+
+        brightnessScale = Scale(window, from_=-100, to=100, showvalue=50, orient=HORIZONTAL, label='Brightness', command=lambda x : updateBrightness(x, fileName))
+        brightnessScale.set(0)
+        brightnessScale.pack()
+        brightnessScale.place(x=310, y=600)
+
+        gammaScale = Scale(window, from_=-100, to=100, orient=HORIZONTAL, showvalue=50, label='Gamma', command=todo)
+        gammaScale.set(0)
+        gammaScale.pack()
+        gammaScale.place(x=490, y=600)
     
     # Set this to true, so the user is prompted when attempting to close the program
     global madeActionBeforeLastSave
