@@ -80,9 +80,19 @@ def updateBrightness(value, window):
     windowarr[window].imageLabel.configure(image=windowarr[window].TkImage)
     windowarr[window].madeChangeBeforeSaving = True
 
-# TODO
+# Updates the brightness in each material window; value is an integer, window is a string of the name of the window
 def updateGamma(value, window):
-    return
+    gamma = 1.0 / float(int(value))
+    windowarr[window].gamma = gamma
+    table = np.array([((i / 255.0) ** gamma) * 255
+		for i in np.arange(0, 256)]).astype("uint8")
+    
+    adjusted = cv2.LUT(windowarr[window].imageArr.astype("uint8"), table)
+    new_mat_img = ImageTk.PhotoImage(Image.fromarray(adjusted).resize((600,600), Image.ANTIALIAS))
+    
+    windowarr[window].TkImage = new_mat_img
+    windowarr[window].imageLabel.configure(image=windowarr[window].TkImage)
+    windowarr[window].madeChangeBeforeSaving = True
 
 # Called before root window quits
 def quit():
@@ -180,7 +190,7 @@ def openNewMaterial():
                 brightnessScale.pack()
                 brightnessScale.place(x=310, y=600)
 
-                gammaScale = Scale(window, from_=-100, to=100, orient=HORIZONTAL, showvalue=50, label='Gamma', command=todo)
+                gammaScale = Scale(window, from_=-100, to=100, orient=HORIZONTAL, showvalue=50, label='Gamma', command=lambda x : updateGamma(x, newFileName))
                 gammaScale.set(0)
                 gammaScale.pack()
                 gammaScale.place(x=490, y=600)
@@ -225,7 +235,7 @@ def openNewMaterial():
         brightnessScale.pack()
         brightnessScale.place(x=310, y=600)
 
-        gammaScale = Scale(window, from_=-100, to=100, orient=HORIZONTAL, showvalue=50, label='Gamma', command=todo)
+        gammaScale = Scale(window, from_=-100, to=100, orient=HORIZONTAL, showvalue=50, label='Gamma', command=lambda x : updateGamma(x, fileName))
         gammaScale.set(0)
         gammaScale.pack()
         gammaScale.place(x=490, y=600)
