@@ -1,4 +1,4 @@
-# Dependencies for installation file: python 3
+# Dependencies for installation file: python 3, ncempy, matplotlib, numpy, cv2, etc.
 
 # <summary>
 # Dependencies
@@ -35,7 +35,7 @@ windowarr = {} # This is a dictionary, the keys are the names of the windows, an
 # Each material window class
 # </summary>
 class materialWindow:
-    def __init__(self, name, windowInstance, TkImage, imageLabel=None, imageArr=None, tool='Imaging', brightness=0, contrast=float(1), gamma=0, madeChangeBeforeSaving=True):
+    def __init__(self, name, windowInstance, TkImage, nextMaterialName=None, previousMaterialName=None, imageLabel=None, imageArr=None, tool='Imaging', brightness=0, contrast=float(1), gamma=float(1), madeChangeBeforeSaving=True):
         self.madeChangeBeforeSaving = madeChangeBeforeSaving
         self.TkImage = TkImage
         self.imageArr = imageArr
@@ -46,6 +46,8 @@ class materialWindow:
         self.contrast = contrast
         self.gamma = gamma
         self.windowInstance = windowInstance
+        self.nextMaterialName = nextMaterialName
+        self.previousMaterialName = previousMaterialName
 # <summary>
 # End of each material window class
 # </summary>
@@ -63,7 +65,7 @@ def updateContrast(value, window):
     alpha = (float(2) * percentage) + float(1) # Contrast control (1.0-3.0)
     windowarr[window].contrast = alpha
     adjusted = cv2.convertScaleAbs(windowarr[window].imageArr, alpha=alpha, beta=windowarr[window].brightness) # Outputs an image array
-    new_mat_img = ImageTk.PhotoImage(Image.fromarray(adjusted).resize((600,600), Image.ANTIALIAS))
+    new_mat_img = ImageTk.PhotoImage(Image.fromarray(adjusted).resize((595,595), Image.ANTIALIAS))
 
     windowarr[window].TkImage = new_mat_img
     windowarr[window].imageLabel.configure(image=windowarr[window].TkImage)
@@ -74,7 +76,7 @@ def updateBrightness(value, window):
     beta = float(int(value))
     windowarr[window].brightness = beta
     adjusted = cv2.convertScaleAbs(windowarr[window].imageArr, alpha=windowarr[window].contrast, beta=beta)
-    new_mat_img = ImageTk.PhotoImage(Image.fromarray(adjusted).resize((600,600), Image.ANTIALIAS))
+    new_mat_img = ImageTk.PhotoImage(Image.fromarray(adjusted).resize((595,595), Image.ANTIALIAS))
 
     windowarr[window].TkImage = new_mat_img
     windowarr[window].imageLabel.configure(image=windowarr[window].TkImage)
@@ -88,8 +90,8 @@ def updateGamma(value, window):
 		for i in np.arange(0, 256)]).astype("uint8")
     
     adjusted = cv2.LUT(windowarr[window].imageArr.astype("uint8"), table)
-    new_mat_img = ImageTk.PhotoImage(Image.fromarray(adjusted).resize((600,600), Image.ANTIALIAS))
-    
+    new_mat_img = ImageTk.PhotoImage(Image.fromarray(adjusted).resize((595,595), Image.ANTIALIAS))
+
     windowarr[window].TkImage = new_mat_img
     windowarr[window].imageLabel.configure(image=windowarr[window].TkImage)
     windowarr[window].madeChangeBeforeSaving = True
@@ -151,14 +153,14 @@ def openNewMaterial():
             else:
                 window.title(fileName + " (copy " + str(x+1) + ")")
 
-                mat_img = ImageTk.PhotoImage(Image.fromarray(dm3f['data']).resize((600,600), Image.ANTIALIAS))
+                mat_img = ImageTk.PhotoImage(Image.fromarray(dm3f['data']).resize((595,595), Image.ANTIALIAS))
                 mat_img_arr = dm3f['data']
                 windowObj = materialWindow(fileName + " (copy " + str(x+1) + ")", window, mat_img, imageArr=mat_img_arr) # Create window object
                 updateWindowMenu(fileName + " (copy " + str(x+1) + ")")
                 windowarr[fileName + " (copy " + str(x+1) + ")"] = windowObj
                 mat = Label(window, image=windowarr[fileName + " (copy " + str(x+1) + ")"].TkImage, bg='white')
                 mat.pack(side="top", fill="both", expand="yes")
-                mat.place(x=65, y=0, anchor='nw')
+                mat.place(x=66, y=0, anchor='nw')
                 windowarr[fileName + " (copy " + str(x+1) + ")"].windowInstance = window
                 windowarr[fileName + " (copy " + str(x+1) + ")"].imageLabel = mat
 
@@ -180,30 +182,38 @@ def openNewMaterial():
                 metaDataButton.pack()
                 metaDataButton.place(x=2, y=212)
 
-                contrastScale = Scale(window, from_=-100, to=100, orient=HORIZONTAL, showvalue=50, label='Contrast', command=lambda x : updateContrast(x, newFileName))
+                nextMaterialButton = Button(window, width=4, height=3, text=">", command=todo)
+                nextMaterialButton.pack()
+                nextMaterialButton.place(x=60, y=600)
+
+                previousMaterialButton = Button(window, width=4, height=3, text="<", command=todo)
+                previousMaterialButton.pack()
+                previousMaterialButton.place(x=2, y=600)
+
+                contrastScale = Scale(window, from_=-100, to=100, orient=HORIZONTAL, showvalue=50, label='Contrast', command=lambda x : updateContrast(x, fileName))
                 contrastScale.set(0)
                 contrastScale.pack()
-                contrastScale.place(x=130, y=600)
+                contrastScale.place(x=170, y=600)
 
-                brightnessScale = Scale(window, from_=-100, to=100, showvalue=50, orient=HORIZONTAL, label='Brightness', command=lambda x : updateBrightness(x, newFileName))
+                brightnessScale = Scale(window, from_=-100, to=100, showvalue=50, orient=HORIZONTAL, label='Brightness', command=lambda x : updateBrightness(x, fileName))
                 brightnessScale.set(0)
                 brightnessScale.pack()
-                brightnessScale.place(x=310, y=600)
+                brightnessScale.place(x=350, y=600)
 
-                gammaScale = Scale(window, from_=-100, to=100, orient=HORIZONTAL, showvalue=50, label='Gamma', command=lambda x : updateGamma(x, newFileName))
+                gammaScale = Scale(window, from_=-100, to=100, orient=HORIZONTAL, showvalue=50, label='Gamma', command=lambda x : updateGamma(x, fileName))
                 gammaScale.set(0)
                 gammaScale.pack()
-                gammaScale.place(x=490, y=600)
+                gammaScale.place(x=530, y=600)
                 break
     else:
-        mat_img = ImageTk.PhotoImage(Image.fromarray(dm3f['data']).resize((600,600), Image.ANTIALIAS))
+        mat_img = ImageTk.PhotoImage(Image.fromarray(dm3f['data']).resize((595,595), Image.ANTIALIAS))
         mat_img_arr = dm3f['data']
         windowObj = materialWindow(fileName, window, mat_img, imageArr=mat_img_arr) # Create window object
         updateWindowMenu(fileName)
         windowarr[fileName] = windowObj
         mat = Label(window, image=windowarr[fileName].TkImage, bg='white')
         mat.pack(side="top", fill="both", expand="yes")
-        mat.place(x=65, y=0, anchor='nw')
+        mat.place(x=66, y=0, anchor='nw')
         window.protocol("WM_DELETE_WINDOW", lambda name=fileName: matQuit(name))
         windowarr[fileName].windowInstance = window
         windowarr[fileName].imageLabel = mat
@@ -225,20 +235,28 @@ def openNewMaterial():
         metaDataButton.pack()
         metaDataButton.place(x=2, y=212)
 
+        nextMaterialButton = Button(window, width=4, height=3, text=">", command=todo)
+        nextMaterialButton.pack()
+        nextMaterialButton.place(x=60, y=600)
+
+        previousMaterialButton = Button(window, width=4, height=3, text="<", command=todo)
+        previousMaterialButton.pack()
+        previousMaterialButton.place(x=2, y=600)
+
         contrastScale = Scale(window, from_=-100, to=100, orient=HORIZONTAL, showvalue=50, label='Contrast', command=lambda x : updateContrast(x, fileName))
         contrastScale.set(0)
         contrastScale.pack()
-        contrastScale.place(x=130, y=600)
+        contrastScale.place(x=170, y=600)
 
         brightnessScale = Scale(window, from_=-100, to=100, showvalue=50, orient=HORIZONTAL, label='Brightness', command=lambda x : updateBrightness(x, fileName))
         brightnessScale.set(0)
         brightnessScale.pack()
-        brightnessScale.place(x=310, y=600)
+        brightnessScale.place(x=350, y=600)
 
         gammaScale = Scale(window, from_=-100, to=100, orient=HORIZONTAL, showvalue=50, label='Gamma', command=lambda x : updateGamma(x, fileName))
         gammaScale.set(0)
         gammaScale.pack()
-        gammaScale.place(x=490, y=600)
+        gammaScale.place(x=530, y=600)
     
     # Set this to true, so the user is prompted when attempting to close the program
     global madeActionBeforeLastSave
@@ -266,7 +284,7 @@ filemenu.add_command(label="Open project", command=todo)
 filemenu.add_command(label="Save project", command=todo)
 filemenu.add_command(label="Save project as", command=todo)
 filemenu.add_separator()
-filemenu.add_command(label="Open material", command=openNewMaterial)
+filemenu.add_command(label="Open material(s)", command=openNewMaterial)
 filemenu.add_command(label="Save material", command=todo)
 filemenu.add_command(label="Save material as", command=todo)
 filemenu.add_separator()
