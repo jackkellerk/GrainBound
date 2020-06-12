@@ -35,7 +35,7 @@ windowarr = {} # This is a dictionary, the keys are the names of the windows, an
 # Each material window class
 # </summary>
 class materialWindow:
-    def __init__(self, name, windowInstance, TkImage, nextMaterialName=None, previousMaterialName=None, imageLabel=None, imageArr=None, tool='Imaging', brightness=0, contrast=float(1), gamma=float(1), madeChangeBeforeSaving=True):
+    def __init__(self, name, windowInstance, TkImage, nextMaterialName=None, previousMaterialName=None, isActive=False, imageLabel=None, imageArr=None, tool='Imaging', brightness=0, contrast=float(1), gamma=float(1), madeChangeBeforeSaving=True):
         self.madeChangeBeforeSaving = madeChangeBeforeSaving
         self.TkImage = TkImage
         self.imageArr = imageArr
@@ -48,6 +48,7 @@ class materialWindow:
         self.windowInstance = windowInstance
         self.nextMaterialName = nextMaterialName
         self.previousMaterialName = previousMaterialName
+        self.isActive = isActive
 # <summary>
 # End of each material window class
 # </summary>
@@ -130,11 +131,55 @@ def bringWindowToFront(name):
     windowarr.get(name).windowInstance.focus_force() 
     windowarr.get(name).windowInstance.lift()
 
+# Switch window options to next window
+def switchNextWindow(name):
+    # Loop through to find active window
+    currentWindow = windowarr[name]
+    while currentWindow.isActive == False and currentWindow.nextMaterialName != None:
+        currentWindow = windowarr[currentWindow.nextMaterialName]
+    
+    if currentWindow.isActive == False:
+        while currentWindow.isActive == False and currentWindow.previousMaterialName != None:
+            currentWindow = windowarr[currentWindow.previousMaterialName]
+
+    # Check if nextMaterialName exists
+    if currentWindow.nextMaterialName == None:
+        return
+
+    currentWindow.isActive = False
+    windowarr[currentWindow.nextMaterialName].isActive = True
+    
+    windowarr[name].windowInstance.title(currentWindow.nextMaterialName)
+    # TODO: Change the name under the window tab on main window
+    # Adjust the (contrast, gamma, and brightness) bars for the new image and call those functions
+
+# Switch window options to previous window
+def switchPreviousWindow(name):
+    # Loop through to find active window
+    currentWindow = windowarr[name]
+    while currentWindow.isActive == False and currentWindow.nextMaterialName != None:
+        currentWindow = windowarr[currentWindow.nextMaterialName]
+    
+    if currentWindow.isActive == False:
+        while currentWindow.isActive == False and currentWindow.previousMaterialName != None:
+            currentWindow = windowarr[currentWindow.previousMaterialName]
+
+    # Check if previousMaterialName exists
+    if currentWindow.previousMaterialName == None:
+        return
+
+    currentWindow.isActive = False
+    windowarr[currentWindow.previousMaterialName].isActive = True
+    
+    windowarr[name].windowInstance.title(currentWindow.previousMaterialName)
+    # TODO: Change the name under the window tab on main window
+    # Adjust the (contrast, gamma, and brightness) bars for the new image and call those functions
+
 # Create dm3 file window
 def openNewMaterial():
     # File browser and creating window
-    fileDir = tkinter.filedialog.askopenfilename(initialdir="/", title="Select a material", filetypes=(("dm3 files", "*.dm3"), ("all files", "*.*")))
-    fileNameArr = fileDir.split('/')
+    fileDir = tkinter.filedialog.askopenfilenames(initialdir="/", title="Select a material", filetypes=(("dm3 files", "*.dm3"), ("all files", "*.*")))
+    fileNameArr = fileDir[0].split('/')
     fileName = fileNameArr[len(fileNameArr)-1]
     window = Toplevel()
     window.title(fileName)
@@ -142,7 +187,7 @@ def openNewMaterial():
     window.geometry("665x665+700+300")
 
     # Create the dm3 image
-    dm3f = dm.dmReader(fileDir)
+    dm3f = dm.dmReader(fileDir[0])
     dm3f['data'] = ((dm3f['data'] * 3) / 16000) # Transforming data
 
     # Check to see if current material is open yet; if it is, make a copy of it increasing a number at the end of the file name; if not, just save it as its file name
@@ -155,7 +200,7 @@ def openNewMaterial():
 
                 mat_img = ImageTk.PhotoImage(Image.fromarray(dm3f['data']).resize((595,595), Image.ANTIALIAS))
                 mat_img_arr = dm3f['data']
-                windowObj = materialWindow(fileName + " (copy " + str(x+1) + ")", window, mat_img, imageArr=mat_img_arr) # Create window object
+                windowObj = materialWindow(fileName + " (copy " + str(x+1) + ")", window, mat_img, imageArr=mat_img_arr, isActive=True) # Create window object
                 updateWindowMenu(fileName + " (copy " + str(x+1) + ")")
                 windowarr[fileName + " (copy " + str(x+1) + ")"] = windowObj
                 mat = Label(window, image=windowarr[fileName + " (copy " + str(x+1) + ")"].TkImage, bg='white')
@@ -182,11 +227,11 @@ def openNewMaterial():
                 metaDataButton.pack()
                 metaDataButton.place(x=2, y=212)
 
-                nextMaterialButton = Button(window, width=4, height=3, text=">", command=todo)
+                nextMaterialButton = Button(window, width=4, height=3, text=">", command=lambda: switchNextWindow(fileName))
                 nextMaterialButton.pack()
                 nextMaterialButton.place(x=60, y=600)
 
-                previousMaterialButton = Button(window, width=4, height=3, text="<", command=todo)
+                previousMaterialButton = Button(window, width=4, height=3, text="<", command=lambda: switchPreviousWindow(fileName))
                 previousMaterialButton.pack()
                 previousMaterialButton.place(x=2, y=600)
 
@@ -208,7 +253,7 @@ def openNewMaterial():
     else:
         mat_img = ImageTk.PhotoImage(Image.fromarray(dm3f['data']).resize((595,595), Image.ANTIALIAS))
         mat_img_arr = dm3f['data']
-        windowObj = materialWindow(fileName, window, mat_img, imageArr=mat_img_arr) # Create window object
+        windowObj = materialWindow(fileName, window, mat_img, imageArr=mat_img_arr, isActive=True) # Create window object
         updateWindowMenu(fileName)
         windowarr[fileName] = windowObj
         mat = Label(window, image=windowarr[fileName].TkImage, bg='white')
@@ -235,11 +280,11 @@ def openNewMaterial():
         metaDataButton.pack()
         metaDataButton.place(x=2, y=212)
 
-        nextMaterialButton = Button(window, width=4, height=3, text=">", command=todo)
+        nextMaterialButton = Button(window, width=4, height=3, text=">", command=lambda: switchNextWindow(fileName))
         nextMaterialButton.pack()
         nextMaterialButton.place(x=60, y=600)
 
-        previousMaterialButton = Button(window, width=4, height=3, text="<", command=todo)
+        previousMaterialButton = Button(window, width=4, height=3, text="<", command=lambda: switchPreviousWindow(fileName))
         previousMaterialButton.pack()
         previousMaterialButton.place(x=2, y=600)
 
@@ -258,9 +303,58 @@ def openNewMaterial():
         gammaScale.pack()
         gammaScale.place(x=530, y=600)
     
+    # This is for the other files selected in the file dialog; open them not as windows, but as window objects connected to the original material
+    for i in range(len(fileDir)):
+        if i == 0:
+            continue
+
+        fileNameArrOthers = fileDir[i].split('/')
+        fileNameOthers = fileNameArrOthers[len(fileNameArrOthers)-1]
+
+        # Create the dm3 image
+        dm3f = dm.dmReader(fileDir[i])
+        dm3f['data'] = ((dm3f['data'] * 3) / 16000) # Transforming data
+
+        # Check to see if current material is open yet; if it is, make a copy of it increasing a number at the end of the file name; if not, just save it as its file name
+        if fileNameOthers in windowarr.keys():
+            for x in range(100):
+                if (fileNameOthers + " (copy " + str(x+1) + ")") in windowarr.keys():
+                    continue
+                else:
+                    mat_img = ImageTk.PhotoImage(Image.fromarray(dm3f['data']).resize((595,595), Image.ANTIALIAS))
+                    mat_img_arr = dm3f['data']
+                    windowObj = materialWindow(fileNameOthers + " (copy " + str(x+1) + ")", window, mat_img, imageArr=mat_img_arr) # Create window object
+                    windowarr[fileNameOthers + " (copy " + str(x+1) + ")"] = windowObj
+                    mat = Label(window, image=windowarr[fileNameOthers + " (copy " + str(x+1) + ")"].TkImage, bg='white')
+                    windowarr[fileNameOthers + " (copy " + str(x+1) + ")"].windowInstance = window
+                    windowarr[fileNameOthers + " (copy " + str(x+1) + ")"].imageLabel = mat
+                    break
+        else:
+            mat_img = ImageTk.PhotoImage(Image.fromarray(dm3f['data']).resize((595,595), Image.ANTIALIAS))
+            mat_img_arr = dm3f['data']
+            windowObj = materialWindow(fileNameOthers, window, mat_img, imageArr=mat_img_arr) # Create window object
+            windowarr[fileNameOthers] = windowObj
+            mat = Label(window, image=windowarr[fileNameOthers].TkImage, bg='white')
+            windowarr[fileNameOthers].windowInstance = window
+            windowarr[fileNameOthers].imageLabel = mat
+    
+    # For each material before and after, connect them using previousMaterialName and nextMaterialName
+    for i in range(len(fileDir)):
+        fileNameArrOthers = fileDir[i].split('/')
+        fileNameOthers = fileNameArrOthers[len(fileNameArrOthers)-1]
+        if i-1 >= 0:
+            fileNameArrBefore = fileDir[i-1].split('/')
+            fileNameBefore = fileNameArrBefore[len(fileNameArrBefore)-1]
+            windowarr[fileNameOthers].previousMaterialName = fileNameBefore
+        if i+1 <= len(fileDir)-1:
+            fileNameArrAfter = fileDir[i+1].split('/')
+            fileNameAfter = fileNameArrAfter[len(fileNameArrAfter)-1]
+            windowarr[fileNameOthers].nextMaterialName = fileNameAfter
+            
     # Set this to true, so the user is prompted when attempting to close the program
     global madeActionBeforeLastSave
     madeActionBeforeLastSave = True
+        
 
 # <summary>
 # End of custom tkinter function code
