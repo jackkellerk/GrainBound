@@ -1,19 +1,18 @@
-[
-    {
-        "name": "example",
-        "contributors": "Jack Kellerk, Chris Marvel"
-    },
+{
+    "name": "example",
+    "contributors": "Jack Kellerk, Chris Marvel",
+    "materials":
     {
         "name": "example.dm3",
         "tool": "Imaging",
-        "brightness: "0.5",
-        "contrast": "0.5",
-        "gamma": "0.5",
-        "initial scale": "1 micrometer",
-        "zoom": "5x",
-        "relative material position": "0.366, 0.666",
-        "relative window screen position": "0.3, 0.3",
-        "image": "LONG URL OF IMAGE AWASIHDNOANFBEIOAF...",
+        "brightness: "0",
+        "contrast": "1",
+        "gamma": "1",
+        "imageArr": "LONG URL OF IMAGE AWASIHDNOANFBEIOAF...",
+        "previousMaterialName": "None",
+        "nextMaterialName": "None",
+        "isActive": "True",
+        "windowPosition": "100, 100",
         "metadata":
         {
             "option 1": "",
@@ -21,4 +20,4 @@
             "option 3": ""
         }
     }
-]
+}
