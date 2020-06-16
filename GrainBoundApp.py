@@ -97,6 +97,7 @@ def updateContrast(value, window):
     currentWindow.imageLabel.configure(image=windowarr[window].TkImage)
 
     windowarr[window].madeChangeBeforeSaving = True
+    root.title("*" + projectName + " | Grainbound")
 
 # Updates the brightness in each material window; value is an integer, window is a string of the name of the window
 def updateBrightness(value, window):
@@ -120,6 +121,7 @@ def updateBrightness(value, window):
     currentWindow.imageLabel.configure(image=windowarr[window].TkImage)
 
     windowarr[window].madeChangeBeforeSaving = True
+    root.title("*" + projectName + " | Grainbound")
 
 # Updates the brightness in each material window; value is an integer, window is a string of the name of the window
 def updateGamma(value, window):
@@ -144,6 +146,7 @@ def updateGamma(value, window):
     currentWindow.imageLabel.configure(image=windowarr[window].TkImage)
 
     windowarr[window].madeChangeBeforeSaving = True
+    root.title("*" + projectName + " | Grainbound")
 
 # Called before root window quits
 def quit():
@@ -378,6 +381,8 @@ def save():
             windowarr[key].madeChangeBeforeSaving = False
         madeActionBeforeLastSave = False
 
+        root.title(projectName + " | Grainbound")
+
 # Save the project
 def saveAs():
     fileDir = tkinter.filedialog.asksaveasfilename(initialdir="/", title="Save project as", defaultextension=".grainbound", filetypes=(("grainbound files", "*.grainbound"), ("all files", "*.*")))
@@ -432,7 +437,7 @@ def openProject():
     projectDir = fileDir
     root.title(projectName + " | Grainbound")
 
-    # TODO: Under the About section, change contributors
+    # TODO: Under the About section, edit contributors
 
     # Open each project as a windowObj
     for mat in jsonData['materials']:
@@ -455,13 +460,12 @@ def openProject():
             windowarr[mat['name']].imageLabel = matLabel
 
             # Add widgets
-            newFileName = mat['name']
-            window.protocol("WM_DELETE_WINDOW", lambda name=mat['name']: matQuit(name))
+            window.protocol("WM_DELETE_WINDOW", lambda name=windowarr[mat['name']].name: matQuit(name))
             moveButton = Button(window, width=4, height=3, text="Move", command=todo)
             moveButton.pack()
             moveButton.place(x=2, y=2)
 
-            annotateButton = Button(window, width=4, height=3, text="Draw", command=todo)
+            annotateButton = Button(window, width=4, height=3, text="Draw", command=lambda name=windowarr[mat['name']].name: print(name))
             annotateButton.pack()
             annotateButton.place(x=2, y=72)
             
@@ -473,25 +477,25 @@ def openProject():
             metaDataButton.pack()
             metaDataButton.place(x=2, y=212)
 
-            nextMaterialButton = Button(window, width=4, height=3, text=">", command=lambda: switchNextWindow(newFileName))
+            nextMaterialButton = Button(window, width=4, height=3, text=">", command=lambda name=windowarr[mat['name']].name: switchNextWindow(name))
             nextMaterialButton.pack()
             nextMaterialButton.place(x=60, y=600)
 
-            previousMaterialButton = Button(window, width=4, height=3, text="<", command=lambda: switchPreviousWindow(newFileName))
+            previousMaterialButton = Button(window, width=4, height=3, text="<", command=lambda name=windowarr[mat['name']].name: switchPreviousWindow(name))
             previousMaterialButton.pack()
             previousMaterialButton.place(x=2, y=600)
 
-            contrastScale = Scale(window, from_=-100, to=100, orient=HORIZONTAL, showvalue=50, label='Contrast', command=lambda x : helperEditSlider(x, newFileName, "contrast"))
+            contrastScale = Scale(window, from_=-100, to=100, orient=HORIZONTAL, showvalue=50, label='Contrast', command=lambda x, name=windowarr[mat['name']].name: helperEditSlider(x, name, "contrast"))
             contrastScale.set(0)
             contrastScale.pack()
             contrastScale.place(x=170, y=600)
 
-            brightnessScale = Scale(window, from_=-100, to=100, showvalue=50, orient=HORIZONTAL, label='Brightness', command=lambda x : helperEditSlider(x, newFileName, "brightness"))
+            brightnessScale = Scale(window, from_=-100, to=100, showvalue=50, orient=HORIZONTAL, label='Brightness', command=lambda x, name=windowarr[mat['name']].name: helperEditSlider(x, name, "brightness"))
             brightnessScale.set(0)
             brightnessScale.pack()
             brightnessScale.place(x=350, y=600)
 
-            gammaScale = Scale(window, from_=-100, to=100, orient=HORIZONTAL, showvalue=50, label='Gamma', command=lambda x : helperEditSlider(x, newFileName, "gamma"))
+            gammaScale = Scale(window, from_=-100, to=100, orient=HORIZONTAL, showvalue=50, label='Gamma', command=lambda x, name=windowarr[mat['name']].name: helperEditSlider(x, name, "gamma"))
             gammaScale.set(0)
             gammaScale.pack()
             gammaScale.place(x=530, y=600)
@@ -507,8 +511,6 @@ def openProject():
             mat_img = ImageTk.PhotoImage(Image.fromarray(mat_img_arr).resize((595,595), Image.ANTIALIAS))
             windowObj = materialWindow(mat['name'], "", None, mat_img, imageArr=mat_img_arr, brightness=mat['brightness'], contrast=mat['contrast'], gamma=mat['gamma'], nextMaterialName=mat['nextMaterialName'], previousMaterialName=mat['previousMaterialName'], tool="Imaging", isActive=False, madeChangeBeforeSaving=False)
             windowarr[mat['name']] = windowObj
-            #matLabel = Label(window, image=windowarr[mat['name']].TkImage, bg='white')
-            #windowarr[mat['name']].imageLabel = matLabel
 
     # Assign parent and window instance to each windowObj
     for key in windowarr.keys():
@@ -743,6 +745,7 @@ def openNewMaterial():
     # Set this to true, so the user is prompted when attempting to close the program
     global madeActionBeforeLastSave
     madeActionBeforeLastSave = True
+    root.title("*" + projectName + " | Grainbound")
 
 # <summary>
 # End of custom tkinter function code
