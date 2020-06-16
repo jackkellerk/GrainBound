@@ -147,14 +147,9 @@ def updateGamma(value, window):
 
 # Called before root window quits
 def quit():
-    # check all materials to see if any made changes before save
-    for x in windowarr.keys():
-        print(x)
-
     global madeActionBeforeLastSave
     for mat in windowarr.keys():
         if windowarr[mat].madeChangeBeforeSaving == True:
-            print(windowarr[mat].name)
             madeActionBeforeLastSave = True
 
     # quit dialog check
