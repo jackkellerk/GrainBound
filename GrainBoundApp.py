@@ -304,11 +304,86 @@ def switchPreviousWindow(name):
     updateBrightness(windowarr[currentWindow.previousMaterialName].brightness, currentWindow.previousMaterialName)
     windowarr[name].imageLabel.configure(image=windowarr[currentWindow.previousMaterialName].TkImage)
 
+# New project
+def newProject():
+    global madeActionBeforeLastSave
+    for mat in windowarr.keys():
+        if windowarr[mat].madeChangeBeforeSaving == True:
+            madeActionBeforeLastSave = True
+
+    # quit dialog check
+    if madeActionBeforeLastSave:
+        if not tkinter.messagebox.askokcancel("New project", "You have unsaved work. If you create a new project, you will lose it. Do you still wish to create a new project?"):
+            return
+
+    fileDir = tkinter.filedialog.asksaveasfilename(initialdir="/", title="Save new project as", defaultextension=".grainbound", filetypes=(("grainbound files", "*.grainbound"), ("all files", "*.*")))
+    fileNameArr = fileDir.split('/')
+    fileName = fileNameArr[len(fileNameArr)-1]
+    fileName = (fileName.split('.'))[0]
+    root.title(fileName + " | Grainbound")
+
+    global projectDir
+    projectDir = fileDir
+    global projectName
+    projectName = fileName
+
+    # Remove all currently opened projects from the window dictionary
+    for key, value in list(windowarr.items()):
+        if value.isActive == True:
+            matQuit(key, removeDialog=True)
+
+    # Create the new file
+    jsonData = {}
+    jsonData['name'] = fileName
+    jsonData['contributors'] = "Jack Kellerk, Chris Marvel"
+    jsonData['materials'] = []
+    newFile = open(fileDir, "w")
+    json.dump(jsonData, newFile)
+    newFile.close()
+
+# Save all materials in the project
+def save():
+    global projectName
+    global projectDir
+    global madeActionBeforeLastSave
+
+    if projectDir == "./temp/":
+        saveAs()
+    else:
+        jsonData = {}
+        jsonData['name'] = projectName
+        jsonData['contributors'] = "Jack Kellerk, Chris Marvel"
+        jsonData['materials'] = []
+
+        # For each material, add it to the materials key for jsonData dictionary
+        for key, value in windowarr.items():
+            jsonData['materials'].append({
+                'name': value.name,
+                'tool': 'Imaging',
+                'brightness': value.brightness,
+                'contrast': value.contrast,
+                'gamma': value.gamma,
+                'imageArr': value.imageArr.tolist(),
+                'previousMaterialName': value.previousMaterialName,
+                'nextMaterialName': value.nextMaterialName,
+                'isActive': value.isActive,
+                'windowPosition': str(value.windowInstance.winfo_x()) + "," + str(value.windowInstance.winfo_y())
+            })
+
+        newFile = open(projectDir, "w")
+        json.dump(jsonData, newFile)
+        newFile.close()
+
+        for key in windowarr.keys():
+            windowarr[key].madeChangeBeforeSaving = False
+        madeActionBeforeLastSave = False
+
 # Save the project
 def saveAs():
     fileDir = tkinter.filedialog.asksaveasfilename(initialdir="/", title="Save project as", defaultextension=".grainbound", filetypes=(("grainbound files", "*.grainbound"), ("all files", "*.*")))
     fileNameArr = fileDir.split('/')
     fileName = fileNameArr[len(fileNameArr)-1]
+    fileName = (fileName.split("."))[0]
     root.title(fileName + " | Grainbound")
     jsonData = {}
     jsonData['name'] = fileName
@@ -334,20 +409,27 @@ def saveAs():
     json.dump(jsonData, newFile)
     newFile.close()
 
+    global projectDir
+    projectDir = fileDir
+    global projectName
+    projectName = fileName
+
 # opens a project
 def openProject():
+    fileDir = tkinter.filedialog.askopenfilename(initialdir="/", title="Select a project", filetypes=(("grainbound files", "*.grainbound"), ("all files", "*.*")))
+    openFile = open(fileDir, "r")
+    jsonData = json.loads(openFile.read())
+
     # Remove all currently opened projects from the window dictionary
     for key, value in list(windowarr.items()):
         if value.isActive == True:
             matQuit(key, removeDialog=True)
 
-    fileDir = tkinter.filedialog.askopenfilename(initialdir="/", title="Select a project", filetypes=(("grainbound files", "*.grainbound"), ("all files", "*.*")))
-    openFile = open(fileDir, "r")
-    jsonData = json.loads(openFile.read())
-
     # Replace project title with project name
     global projectName
     projectName = (jsonData['name'].split('.'))[0]
+    global projectDir
+    projectDir = fileDir
     root.title(projectName + " | Grainbound")
 
     # TODO: Under the About section, change contributors
@@ -679,13 +761,13 @@ root.protocol("WM_DELETE_WINDOW", quit)
 menubar = Menu(root)
 
 filemenu = Menu(menubar, tearoff=0)
-filemenu.add_command(label="New project", command=todo)
+filemenu.add_command(label="New project", command=newProject)
 filemenu.add_command(label="Open project", command=openProject)
-filemenu.add_command(label="Save project", command=todo)
+filemenu.add_command(label="Save project", command=save)
 filemenu.add_command(label="Save project as", command=saveAs)
 filemenu.add_separator()
 filemenu.add_command(label="Open material(s)", command=openNewMaterial)
-filemenu.add_command(label="Save material", command=todo)
+filemenu.add_command(label="Save materials", command=save)
 filemenu.add_command(label="Save material as", command=todo)
 filemenu.add_separator()
 filemenu.add_command(label="Exit", command=quit)
