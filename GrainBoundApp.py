@@ -25,6 +25,10 @@ projectName = 'Untitled Project'
 projectDir = "./temp/"
 madeActionBeforeLastSave = False # This variable is used to determine whether closing the program should prompt the user to save
 windowarr = {} # This is a dictionary, the keys are the names of the windows, and the values are the window classes
+activeTool = "Move"
+old_mouse_x = None # These two variables are to keep track of the previous mouse position for the tools
+old_mouse_y = None
+zoomArr = [None] * 4 # This is used to hold the temp lines for the box for the zoom tool
 
 # <summary>
 # End of code before tkinter code
@@ -34,13 +38,16 @@ windowarr = {} # This is a dictionary, the keys are the names of the windows, an
 # Each material window class
 # </summary>
 class materialWindow:
-    def __init__(self, name, parent, windowInstance, TkImage, nextMaterialName=None, previousMaterialName=None, isActive=False, imageLabel=None, imageArr=None, tool='Imaging', brightness=0, contrast=float(1), gamma=float(1), madeChangeBeforeSaving=True):
+    def __init__(self, name, parent, windowInstance, TkImage, position, zoomScale=[1,1], lineArr=None, nextMaterialName=None, previousMaterialName=None, isActive=False, canvas=None, imageArr=None, tool='Imaging', brightness=0, contrast=float(1), gamma=float(1), madeChangeBeforeSaving=True):
         self.madeChangeBeforeSaving = madeChangeBeforeSaving
         self.TkImage = TkImage
         self.imageArr = imageArr
         self.name = name
+        self.position = position
+        self.zoomScale = zoomScale
+        self.lineArr = lineArr
         self.parent = parent
-        self.imageLabel = imageLabel
+        self.canvas = canvas
         self.tool = tool
         self.brightness = brightness
         self.contrast = contrast
@@ -84,7 +91,7 @@ def updateContrast(value, window):
     alpha = (float(2) * percentage) + float(1) # Contrast control (1.0-3.0)
     windowarr[window].contrast = value
     adjusted = cv2.convertScaleAbs(windowarr[window].imageArr, alpha=alpha, beta=float(int(windowarr[window].brightness))) # Outputs an image array
-    new_mat_img = ImageTk.PhotoImage(Image.fromarray(adjusted).resize((595,595), Image.ANTIALIAS))
+    new_mat_img = ImageTk.PhotoImage(Image.fromarray(adjusted).resize((int(595 * windowarr[window].zoomScale[0]), int(595 * windowarr[window].zoomScale[1])), Image.ANTIALIAS))
 
     windowarr[window].TkImage = new_mat_img
 
@@ -94,7 +101,10 @@ def updateContrast(value, window):
     if currentWindow.parent != currentWindow.name:
         while currentWindow.parent != currentWindow.name and currentWindow.nextMaterialName != None:
             currentWindow = windowarr[currentWindow.nextMaterialName]
-    currentWindow.imageLabel.configure(image=windowarr[window].TkImage)
+    currentWindow.canvas.delete("all")
+    currentWindow.canvas.create_image(windowarr[window].position[0], windowarr[window].position[1], image=windowarr[window].TkImage, anchor=NW)
+    for i in range(len(windowarr[window].lineArr)):
+        currentWindow.canvas.create_line(windowarr[window].lineArr[i][0], windowarr[window].lineArr[i][1], windowarr[window].lineArr[i][2], windowarr[window].lineArr[i][3], width=5, fill='red', capstyle=ROUND, smooth=TRUE, splinesteps=36)
 
     windowarr[window].madeChangeBeforeSaving = True
     root.title("*" + projectName + " | Grainbound")
@@ -108,7 +118,7 @@ def updateBrightness(value, window):
 
     windowarr[window].brightness = value
     adjusted = cv2.convertScaleAbs(windowarr[window].imageArr, alpha=alpha, beta=beta)
-    new_mat_img = ImageTk.PhotoImage(Image.fromarray(adjusted).resize((595,595), Image.ANTIALIAS))
+    new_mat_img = ImageTk.PhotoImage(Image.fromarray(adjusted).resize((int(595 * windowarr[window].zoomScale[0]), int(595 * windowarr[window].zoomScale[1])), Image.ANTIALIAS))
 
     windowarr[window].TkImage = new_mat_img
 
@@ -118,7 +128,10 @@ def updateBrightness(value, window):
     if currentWindow.parent != currentWindow.name:
         while currentWindow.parent != currentWindow.name and currentWindow.nextMaterialName != None:
             currentWindow = windowarr[currentWindow.nextMaterialName]
-    currentWindow.imageLabel.configure(image=windowarr[window].TkImage)
+    currentWindow.canvas.delete("all")
+    currentWindow.canvas.create_image(windowarr[window].position[0], windowarr[window].position[1], image=windowarr[window].TkImage, anchor=NW)
+    for i in range(len(windowarr[window].lineArr)):
+        currentWindow.canvas.create_line(windowarr[window].lineArr[i][0], windowarr[window].lineArr[i][1], windowarr[window].lineArr[i][2], windowarr[window].lineArr[i][3], width=5, fill='red', capstyle=ROUND, smooth=TRUE, splinesteps=36)
 
     windowarr[window].madeChangeBeforeSaving = True
     root.title("*" + projectName + " | Grainbound")
@@ -133,7 +146,7 @@ def updateGamma(value, window):
 		for i in np.arange(0, 256)]).astype("uint8")
     
     adjusted = cv2.LUT(windowarr[window].imageArr.astype("uint8"), table)
-    new_mat_img = ImageTk.PhotoImage(Image.fromarray(adjusted).resize((595,595), Image.ANTIALIAS))
+    new_mat_img = ImageTk.PhotoImage(Image.fromarray(adjusted).resize((int(595 * windowarr[window].zoomScale[0]), int(595 * windowarr[window].zoomScale[1])), Image.ANTIALIAS))
 
     windowarr[window].TkImage = new_mat_img
 
@@ -143,7 +156,10 @@ def updateGamma(value, window):
     if currentWindow.parent != currentWindow.name:
         while currentWindow.parent != currentWindow.name and currentWindow.nextMaterialName != None:
             currentWindow = windowarr[currentWindow.nextMaterialName]
-    currentWindow.imageLabel.configure(image=windowarr[window].TkImage)
+    currentWindow.canvas.delete("all")
+    currentWindow.canvas.create_image(windowarr[window].position[0], windowarr[window].position[1], image=windowarr[window].TkImage, anchor=NW)
+    for i in range(len(windowarr[window].lineArr)):
+        currentWindow.canvas.create_line(windowarr[window].lineArr[i][0], windowarr[window].lineArr[i][1], windowarr[window].lineArr[i][2], windowarr[window].lineArr[i][3], width=5, fill='red', capstyle=ROUND, smooth=TRUE, splinesteps=36)
 
     windowarr[window].madeChangeBeforeSaving = True
     root.title("*" + projectName + " | Grainbound")
@@ -275,10 +291,7 @@ def switchNextWindow(name):
     windowarr[currentWindow.nextMaterialName].isActive = True
     
     windowarr[name].windowInstance.title(currentWindow.nextMaterialName)
-    updateGamma(windowarr[currentWindow.nextMaterialName].gamma, currentWindow.nextMaterialName)
     updateContrast(windowarr[currentWindow.nextMaterialName].contrast, currentWindow.nextMaterialName)
-    updateBrightness(windowarr[currentWindow.nextMaterialName].brightness, currentWindow.nextMaterialName)
-    windowarr[name].imageLabel.configure(image=windowarr[currentWindow.nextMaterialName].TkImage)
 
 # Switch window options to previous window; name is the window name
 def switchPreviousWindow(name):
@@ -302,10 +315,109 @@ def switchPreviousWindow(name):
     windowarr[currentWindow.previousMaterialName].isActive = True
     
     windowarr[name].windowInstance.title(currentWindow.previousMaterialName)
-    updateGamma(windowarr[currentWindow.previousMaterialName].gamma, currentWindow.previousMaterialName)
     updateContrast(windowarr[currentWindow.previousMaterialName].contrast, currentWindow.previousMaterialName)
-    updateBrightness(windowarr[currentWindow.previousMaterialName].brightness, currentWindow.previousMaterialName)
-    windowarr[name].imageLabel.configure(image=windowarr[currentWindow.previousMaterialName].TkImage)
+
+# This is the helper function for tools
+def changeTool(tool):
+    global activeTool
+    if tool == "Move":
+        activeTool = "Move"
+    elif tool == "Zoom":
+        activeTool = "Zoom"
+    elif tool == "Draw":
+        activeTool = "Draw"
+
+# This is the helper function to help choose what function to execute when clicking on the canvas; name is window name
+def clickedCanvas(event, name):
+    global activeTool
+
+    # Loop through to find active window
+    currentWindow = windowarr[name]
+    while currentWindow.isActive == False and currentWindow.nextMaterialName != None:
+        currentWindow = windowarr[currentWindow.nextMaterialName]
+    
+    if currentWindow.isActive == False:
+        while currentWindow.isActive == False and currentWindow.previousMaterialName != None:
+            currentWindow = windowarr[currentWindow.previousMaterialName]
+
+    if activeTool == "Zoom":
+        zoom(event, currentWindow.name)
+    elif activeTool == "Move":
+        todo()
+    elif activeTool == "Draw":
+        paint(event, currentWindow.name)
+
+# This is the helper function to reset the cursor position after clicking on the canvas
+def stopClickedCanvas(event, name):
+    global old_mouse_x, old_mouse_y, activeTool
+
+    if activeTool == "Zoom":
+        # Remove the rectangle
+        for i in range(len(zoomArr)):
+            if zoomArr[i] != None:
+                windowarr[name].canvas.delete(zoomArr[i])
+                zoomArr[i] = None
+        
+        # Loop through to find active window
+        currentWindow = windowarr[name]
+        while currentWindow.isActive == False and currentWindow.nextMaterialName != None:
+            currentWindow = windowarr[currentWindow.nextMaterialName]
+        
+        if currentWindow.isActive == False:
+            while currentWindow.isActive == False and currentWindow.previousMaterialName != None:
+                currentWindow = windowarr[currentWindow.previousMaterialName]
+        
+        # Find width and height of new crop zone
+        width = (event.x - old_mouse_x) if (event.x - old_mouse_x) > 0 else (old_mouse_x - event.x)
+        height = (old_mouse_y - event.y) if (old_mouse_y - event.y) > 0 else (event.y - old_mouse_y)
+
+        # Scale
+        scale_w = float(595) / float(width)
+        scale_h = float(595) / float(height)
+
+        # Set the position
+        currentWindow.position = [0 - (old_mouse_x * scale_w), 0 - (old_mouse_y * scale_h)]
+        currentWindow.zoomScale = [scale_w, scale_h]
+
+        # Redraw canvas
+        updateContrast(currentWindow.contrast, currentWindow.name)
+
+    old_mouse_x = None
+    old_mouse_y = None
+
+# This is the function to zoom a material
+def zoom(event, name):
+    global old_mouse_x, old_mouse_y, zoomArr
+
+    for i in range(len(zoomArr)):
+        if zoomArr[i] != None:
+            windowarr[name].canvas.delete(zoomArr[i])
+            zoomArr[i] = None
+    
+    if old_mouse_x and old_mouse_y:
+        zoomArr[0] = windowarr[name].canvas.create_line(old_mouse_x, old_mouse_y, event.x, old_mouse_y, width=2, fill='yellow', capstyle=ROUND, smooth=TRUE, splinesteps=36)
+        zoomArr[1] = windowarr[name].canvas.create_line(event.x, old_mouse_y, event.x, event.y, width=2, fill='yellow', capstyle=ROUND, smooth=TRUE, splinesteps=36)
+        zoomArr[2] = windowarr[name].canvas.create_line(old_mouse_x, old_mouse_y, old_mouse_x, event.y, width=2, fill='yellow', capstyle=ROUND, smooth=TRUE, splinesteps=36)
+        zoomArr[3] = windowarr[name].canvas.create_line(old_mouse_x, event.y, event.x, event.y, width=2, fill='yellow', capstyle=ROUND, smooth=TRUE, splinesteps=36)
+    else:
+        old_mouse_x = event.x
+        old_mouse_y = event.y
+    
+    windowarr[name].madeChangeBeforeSaving = True
+    root.title("*" + projectName + " | Grainbound")
+
+# This is the function to draw on the canvas
+def paint(event, name):
+    global old_mouse_x, old_mouse_y
+
+    if old_mouse_x and old_mouse_y:
+        windowarr[name].canvas.create_line(old_mouse_x, old_mouse_y, event.x, event.y, width=5, fill='red', capstyle=ROUND, smooth=TRUE, splinesteps=36)
+        windowarr[name].lineArr.append([old_mouse_x, old_mouse_y, event.x, event.y])
+
+    old_mouse_x = event.x
+    old_mouse_y = event.y
+    windowarr[name].madeChangeBeforeSaving = True
+    root.title("*" + projectName + " | Grainbound")
 
 # New project
 def newProject():
@@ -370,7 +482,8 @@ def save():
                 'previousMaterialName': value.previousMaterialName,
                 'nextMaterialName': value.nextMaterialName,
                 'isActive': value.isActive,
-                'windowPosition': str(value.windowInstance.winfo_x()) + "," + str(value.windowInstance.winfo_y())
+                'windowPosition': str(value.windowInstance.winfo_x()) + "," + str(value.windowInstance.winfo_y()),
+                'lineArr': value.lineArr
             })
 
         newFile = open(projectDir, "w")
@@ -386,6 +499,8 @@ def save():
 # Save the project
 def saveAs():
     fileDir = tkinter.filedialog.asksaveasfilename(initialdir="/", title="Save project as", defaultextension=".grainbound", filetypes=(("grainbound files", "*.grainbound"), ("all files", "*.*")))
+    if len(fileDir) == 0:
+        return
     fileNameArr = fileDir.split('/')
     fileName = fileNameArr[len(fileNameArr)-1]
     fileName = (fileName.split("."))[0]
@@ -407,7 +522,8 @@ def saveAs():
             'previousMaterialName': value.previousMaterialName,
             'nextMaterialName': value.nextMaterialName,
             'isActive': value.isActive,
-            'windowPosition': str(value.windowInstance.winfo_x()) + "," + str(value.windowInstance.winfo_y())
+            'windowPosition': str(value.windowInstance.winfo_x()) + "," + str(value.windowInstance.winfo_y()),
+            'lineArr': value.lineArr
         })
 
     newFile = open(fileDir, "w")
@@ -422,6 +538,8 @@ def saveAs():
 # opens a project
 def openProject():
     fileDir = tkinter.filedialog.askopenfilename(initialdir="/", title="Select a project", filetypes=(("grainbound files", "*.grainbound"), ("all files", "*.*")))
+    if len(fileDir) == 0:
+        return
     openFile = open(fileDir, "r")
     jsonData = json.loads(openFile.read())
 
@@ -451,27 +569,32 @@ def openProject():
 
             mat_img_arr = np.array(mat['imageArr'])
             mat_img = ImageTk.PhotoImage(Image.fromarray(mat_img_arr).resize((595,595), Image.ANTIALIAS))
-            windowObj = materialWindow(mat['name'], mat['name'], window, mat_img, imageArr=mat_img_arr, previousMaterialName=mat['previousMaterialName'], nextMaterialName=mat['nextMaterialName'], isActive=True, madeChangeBeforeSaving=False)
+            windowObj = materialWindow(mat['name'], mat['name'], window, mat_img, [0, 0], lineArr=mat['lineArr'], imageArr=mat_img_arr, previousMaterialName=mat['previousMaterialName'], nextMaterialName=mat['nextMaterialName'], isActive=True, madeChangeBeforeSaving=False)
             windowarr[mat['name']] = windowObj
-            matLabel = Label(window, image=windowarr[mat['name']].TkImage, bg='white')
-            matLabel.pack(side="top", fill="both", expand="yes")
-            matLabel.place(x=66, y=0, anchor='nw')
+
+            canvas = Canvas(window, width=595, height=595, bd=0, highlightthickness=0)
+            canvas.pack(side="top", fill="both", expand="yes")
+            canvas.place(x=66, y=0, anchor='nw')
+            canvas.create_image(0, 0, image=windowarr[mat['name']].TkImage, anchor=NW)
+            canvas.bind('<B1-Motion>', lambda x, name=windowarr[mat['name']].name: clickedCanvas(x, name))
+            canvas.bind('<ButtonRelease-1>', lambda x, name=windowarr[mat['name']].name: stopClickedCanvas(x, name))
+
             windowarr[mat['name']].windowInstance = window
-            windowarr[mat['name']].imageLabel = matLabel
+            windowarr[mat['name']].canvas = canvas
 
             # Add widgets
             window.protocol("WM_DELETE_WINDOW", lambda name=windowarr[mat['name']].name: matQuit(name))
-            moveButton = Button(window, width=4, height=3, text="Move", command=todo)
+            moveButton = Button(window, width=4, height=3, text="Move", command=lambda: changeTool("Move"))
             moveButton.pack()
             moveButton.place(x=2, y=2)
 
-            annotateButton = Button(window, width=4, height=3, text="Draw", command=lambda name=windowarr[mat['name']].name: print(name))
-            annotateButton.pack()
-            annotateButton.place(x=2, y=72)
+            zoomButton = Button(window, width=4, height=3, text="Zoom", command=lambda: changeTool("Zoom"))
+            zoomButton.pack()
+            zoomButton.place(x=2, y=72)
             
-            toolButton = Button(window, width=4, height=3, text="Change\nTool", command=todo)
-            toolButton.pack()
-            toolButton.place(x=2, y=142)
+            annotateButton = Button(window, width=4, height=3, text="Draw", command=lambda: changeTool("Draw"))
+            annotateButton.pack()
+            annotateButton.place(x=2, y=142)
 
             metaDataButton = Button(window, width=4, height=3, text="Meta\nData", command=todo)
             metaDataButton.pack()
@@ -509,7 +632,7 @@ def openProject():
         else:
             mat_img_arr = np.array(mat['imageArr'])
             mat_img = ImageTk.PhotoImage(Image.fromarray(mat_img_arr).resize((595,595), Image.ANTIALIAS))
-            windowObj = materialWindow(mat['name'], "", None, mat_img, imageArr=mat_img_arr, brightness=mat['brightness'], contrast=mat['contrast'], gamma=mat['gamma'], nextMaterialName=mat['nextMaterialName'], previousMaterialName=mat['previousMaterialName'], tool="Imaging", isActive=False, madeChangeBeforeSaving=False)
+            windowObj = materialWindow(mat['name'], "", None, mat_img, [0, 0], lineArr=mat['lineArr'], imageArr=mat_img_arr, brightness=mat['brightness'], contrast=mat['contrast'], gamma=mat['gamma'], nextMaterialName=mat['nextMaterialName'], previousMaterialName=mat['previousMaterialName'], tool="Imaging", isActive=False, madeChangeBeforeSaving=False)
             windowarr[mat['name']] = windowObj
 
     # Assign parent and window instance to each windowObj
@@ -542,6 +665,8 @@ def openProject():
 def openNewMaterial():
     # File browser and creating window
     fileDir = tkinter.filedialog.askopenfilenames(initialdir="/", title="Select a material", filetypes=(("dm3 files", "*.dm3"), ("all files", "*.*")))
+    if len(fileDir) == 0:
+        return
     fileNameArr = fileDir[0].split('/')
     fileName = fileNameArr[len(fileNameArr)-1]
     window = Toplevel()
@@ -565,30 +690,36 @@ def openNewMaterial():
 
                 mat_img = ImageTk.PhotoImage(Image.fromarray(dm3f['data']).resize((595,595), Image.ANTIALIAS))
                 mat_img_arr = dm3f['data']
-                windowObj = materialWindow(fileName + " (copy " + str(x+1) + ")", fileName + " (copy " + str(x+1) + ")", window, mat_img, imageArr=mat_img_arr, isActive=True) # Create window object
+                windowObj = materialWindow(fileName + " (copy " + str(x+1) + ")", fileName + " (copy " + str(x+1) + ")", window, mat_img, [0,0], imageArr=mat_img_arr, isActive=True) # Create window object
                 updateWindowMenu(fileName + " (copy " + str(x+1) + ")")
                 windowarr[fileName + " (copy " + str(x+1) + ")"] = windowObj
-                mat = Label(window, image=windowarr[fileName + " (copy " + str(x+1) + ")"].TkImage, bg='white')
-                mat.pack(side="top", fill="both", expand="yes")
-                mat.place(x=66, y=0, anchor='nw')
+                windowarr[fileName + " (copy " + str(x+1) + ")"].lineArr = []
+                
+                canvas = Canvas(window, width=595, height=595, bd=0, highlightthickness=0)
+                canvas.pack(side="top", fill="both", expand="yes")
+                canvas.place(x=66, y=0, anchor='nw')
+                canvas.create_image(0, 0, image=windowarr[fileName].TkImage, anchor=NW)
+                canvas.bind('<B1-Motion>', lambda x: clickedCanvas(x, newFileName))
+                canvas.bind('<ButtonRelease-1>', lambda x: stopClickedCanvas(x, newFileName))
+
                 windowarr[fileName + " (copy " + str(x+1) + ")"].windowInstance = window
-                windowarr[fileName + " (copy " + str(x+1) + ")"].imageLabel = mat
+                windowarr[fileName + " (copy " + str(x+1) + ")"].canvas = canvas
 
                 # Add widgets
                 newFileName = fileName + " (copy " + str(x+1) + ")"
                 window.protocol("WM_DELETE_WINDOW", lambda name=newFileName: matQuit(name))
                 parentName = newFileName
-                moveButton = Button(window, width=4, height=3, text="Move", command=todo)
+                moveButton = Button(window, width=4, height=3, text="Move", command=lambda: changeTool("Move"))
                 moveButton.pack()
                 moveButton.place(x=2, y=2)
 
-                annotateButton = Button(window, width=4, height=3, text="Draw", command=todo)
-                annotateButton.pack()
-                annotateButton.place(x=2, y=72)
+                zoomButton = Button(window, width=4, height=3, text="Zoom", command=lambda: changeTool("Zoom"))
+                zoomButton.pack()
+                zoomButton.place(x=2, y=72)
                 
-                toolButton = Button(window, width=4, height=3, text="Change\nTool", command=todo)
-                toolButton.pack()
-                toolButton.place(x=2, y=142)
+                annotateButton = Button(window, width=4, height=3, text="Draw", command=lambda: changeTool("Draw"))
+                annotateButton.pack()
+                annotateButton.place(x=2, y=142)
 
                 metaDataButton = Button(window, width=4, height=3, text="Meta\nData", command=todo)
                 metaDataButton.pack()
@@ -620,28 +751,34 @@ def openNewMaterial():
     else:
         mat_img = ImageTk.PhotoImage(Image.fromarray(dm3f['data']).resize((595,595), Image.ANTIALIAS))
         mat_img_arr = dm3f['data']
-        windowObj = materialWindow(fileName, fileName, window, mat_img, imageArr=mat_img_arr, isActive=True) # Create window object
+        windowObj = materialWindow(fileName, fileName, window, mat_img, [0,0], imageArr=mat_img_arr, isActive=True) # Create window object
         updateWindowMenu(fileName)
         windowarr[fileName] = windowObj
-        mat = Label(window, image=windowarr[fileName].TkImage, bg='white')
-        mat.pack(side="top", fill="both", expand="yes")
-        mat.place(x=66, y=0, anchor='nw')
+        windowarr[fileName].lineArr = []
+        
+        canvas = Canvas(window, width=595, height=595, bd=0, highlightthickness=0)
+        canvas.pack(side="top", fill="both", expand="yes")
+        canvas.place(x=66, y=0, anchor='nw')
+        canvas.create_image(0, 0, image=windowarr[fileName].TkImage, anchor=NW)
+        canvas.bind('<B1-Motion>', lambda x: clickedCanvas(x, fileName))
+        canvas.bind('<ButtonRelease-1>', lambda x: stopClickedCanvas(x, fileName))
+        
         window.protocol("WM_DELETE_WINDOW", lambda name=fileName: matQuit(name))
         windowarr[fileName].windowInstance = window
-        windowarr[fileName].imageLabel = mat
+        windowarr[fileName].canvas = canvas
 
         # Add widgets
-        moveButton = Button(window, width=4, height=3, text="Move", command=todo)
+        moveButton = Button(window, width=4, height=3, text="Move", command=lambda: changeTool("Move"))
         moveButton.pack()
         moveButton.place(x=2, y=2)
 
-        annotateButton = Button(window, width=4, height=3, text="Draw", command=todo)
-        annotateButton.pack()
-        annotateButton.place(x=2, y=72)
+        zoomButton = Button(window, width=4, height=3, text="Zoom", command=lambda: changeTool("Zoom"))
+        zoomButton.pack()
+        zoomButton.place(x=2, y=72)
         
-        toolButton = Button(window, width=4, height=3, text="Change\nTool", command=todo)
-        toolButton.pack()
-        toolButton.place(x=2, y=142)
+        annotateButton = Button(window, width=4, height=3, text="Draw", command=lambda: changeTool("Draw"))
+        annotateButton.pack()
+        annotateButton.place(x=2, y=142)
 
         metaDataButton = Button(window, width=4, height=3, text="Meta\nData", command=todo)
         metaDataButton.pack()
@@ -690,20 +827,20 @@ def openNewMaterial():
                 else:
                     mat_img = ImageTk.PhotoImage(Image.fromarray(dm3f['data']).resize((595,595), Image.ANTIALIAS))
                     mat_img_arr = dm3f['data']
-                    windowObj = materialWindow(fileNameOthers + " (copy " + str(x+1) + ")", parentName, window, mat_img, imageArr=mat_img_arr) # Create window object
+                    windowObj = materialWindow(fileNameOthers + " (copy " + str(x+1) + ")", parentName, window, mat_img, [0,0], imageArr=mat_img_arr) # Create window object
                     windowarr[fileNameOthers + " (copy " + str(x+1) + ")"] = windowObj
-                    mat = Label(window, image=windowarr[fileNameOthers + " (copy " + str(x+1) + ")"].TkImage, bg='white')
                     windowarr[fileNameOthers + " (copy " + str(x+1) + ")"].windowInstance = window
-                    windowarr[fileNameOthers + " (copy " + str(x+1) + ")"].imageLabel = mat
+                    windowarr[fileNameOthers + " (copy " + str(x+1) + ")"].canvas = windowarr[parentName].canvas
+                    windowarr[fileNameOthers + " (copy " + str(x+1) + ")"].lineArr = []
                     break
         else:
             mat_img = ImageTk.PhotoImage(Image.fromarray(dm3f['data']).resize((595,595), Image.ANTIALIAS))
             mat_img_arr = dm3f['data']
-            windowObj = materialWindow(fileNameOthers, parentName, window, mat_img, imageArr=mat_img_arr) # Create window object
+            windowObj = materialWindow(fileNameOthers, parentName, window, mat_img, [0,0], imageArr=mat_img_arr) # Create window object
             windowarr[fileNameOthers] = windowObj
-            mat = Label(window, image=windowarr[fileNameOthers].TkImage, bg='white')
             windowarr[fileNameOthers].windowInstance = window
-            windowarr[fileNameOthers].imageLabel = mat
+            windowarr[fileNameOthers].canvas = windowarr[parentName].canvas
+            windowarr[fileNameOthers].lineArr = []
     
     # For each material before and after, connect them using previousMaterialName and nextMaterialName
     for i in range(len(fileDir)):
