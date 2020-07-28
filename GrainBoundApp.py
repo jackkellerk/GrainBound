@@ -11,9 +11,11 @@ from ncempy.io import dm
 import matplotlib.pyplot as plt
 import numpy as np
 import imageio
-import skimage
+from EDS import edsWindow
+from EDS import openNewEDS
 import cv2
 import json
+from SET import projectName, projectDir, madeActionBeforeLastSave, windowarr, old_mouse_x, old_mouse_y, zoomArr
 # <summary>
 # End of dependencies
 # </summary>
@@ -24,13 +26,6 @@ import json
 np.set_printoptions(threshold=sys.maxsize)
 
 # Global variables
-projectName = 'Untitled Project'
-projectDir = "./temp/"
-madeActionBeforeLastSave = False # This variable is used to determine whether closing the program should prompt the user to save
-windowarr = {} # This is a dictionary, the keys are the names of the windows, and the values are the window classes
-old_mouse_x = None # These two variables are to keep track of the previous mouse position for the tools
-old_mouse_y = None
-zoomArr = [None] * 4 # This is used to hold the temp lines for the box for the zoom tool
 
 # <summary>
 # End of code before tkinter code
@@ -478,7 +473,7 @@ def newProject():
     # Create the new file
     jsonData = {}
     jsonData['name'] = fileName
-    jsonData['contributors'] = "Jack Kellerk, Chris Marvel"
+    jsonData['contributors'] = "Jack Kellerk, Chris Marvel, Anna Thomas"
     jsonData['materials'] = []
     newFile = open(fileDir, "w")
     json.dump(jsonData, newFile)
@@ -723,7 +718,7 @@ def openNewMaterial():
     fileName = fileNameArr[len(fileNameArr)-1]
     window = Toplevel()
     window.title(fileName)
-    window.resizable(0,0)
+    window.resizable(0,0) #can't resize
     window.geometry("665x665+700+300")
 
     parentName = fileName
@@ -994,13 +989,14 @@ menubar = Menu(root)
 
 filemenu = Menu(menubar, tearoff=0)
 filemenu.add_command(label="New project", command=newProject)
-filemenu.add_command(label="Open project", command=openProject)
+filemenu.add_command(label="Open project...", command=openProject)
 filemenu.add_command(label="Save project", command=save)
-filemenu.add_command(label="Save project as", command=saveAs)
+filemenu.add_command(label="Save project as...", command=saveAs)
 filemenu.add_separator()
 filemenu.add_command(label="Open material(s)", command=openNewMaterial)
+filemenu.add_command(label="Open EDS material(s)", command=openNewEDS)
 filemenu.add_command(label="Save materials", command=save)
-filemenu.add_command(label="Save material as", command=todo)
+filemenu.add_command(label="Save material as...", command=todo)
 filemenu.add_separator()
 filemenu.add_command(label="Exit", command=quit)
 
