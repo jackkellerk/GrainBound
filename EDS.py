@@ -18,12 +18,15 @@ import numpy as np
 import imageio
 import cv2
 import json
-from SET import projectName, projectDir, madeActionBeforeLastSave, windowarr, old_mouse_x, old_mouse_y, zoomArr
+from SET import windowmenu, projectName, projectDir, madeActionBeforeLastSave, windowarr, old_mouse_x, old_mouse_y, zoomArr
+
+
+
 # <summary>
 # Each EDS window class
 # </summary>
 class edsWindow:
-    def __init__(self, name, parent, windowInstance, TkImage, position, zoomScale, scaleColor="#FFFFFF", previousMaterialName=None, nextMaterialName=None, isActive=False, canvas=None, energyArr=None, countArry=None, tool="Move", madeChangeBeforeSaving=True):
+    def __init__(self, name, parent, windowInstance, TkImage, position, zoomScale, scaleColor="#FFFFFF", previousMaterialName=None, nextMaterialName=None, isActive=False, canvas=None, energyArr=None, countArr=None, tool="Move", madeChangeBeforeSaving=True):
         self.name = name
         self.parent = parent
         self.windowInstance = windowInstance
@@ -75,12 +78,9 @@ def openNewEDS():
             txt = txt.split(',')
             data.append([float(txt[0]), float(txt[1])])
 
-    root = tkinter.Toplevel()
-    cv = Canvas(root, width=450, height=300, bd=0)
-    cv.pack()
+    #cv = Canvas(root, width=450, height=300, bd=0)
     eds_img = ImageTk.PhotoImage(file="testgraph1.png")
-    canvasImage = cv.create_image(0, 0, image=eds_img, anchor="nw")
-    root.mainloop()
+    #canvasImage = cv.create_image(0, 0, image=eds_img, anchor="nw")
 
     
     # Check to see if current material is open yet; if it is, make a copy of it increasing a number at the end of the file name; if not, just save it as its file name
@@ -90,11 +90,9 @@ def openNewEDS():
                 continue
             else:
                 window.title(fileName + " (copy " + str(x+1) + ")")
-                '''
-                windowObj = edsWindow(fileName + " (copy " + str(x+1) + ")", fileName + " (copy " + str(x+1) + ")", windowInstance=window, position=[0,0], zoomScale=1, energyArr=data[:,0], countArr=data[:,1] isActive=True) # Create window object
+                windowObj = edsWindow(fileName + " (copy " + str(x+1) + ")", fileName + " (copy " + str(x+1) + ")", windowInstance=window, position=[0,0], zoomScale=1, energyArr=En, countArr=Ct, isActive=True) # Create window object
                 updateWindowMenu(fileName + " (copy " + str(x+1) + ")")
                 windowarr[fileName + " (copy " + str(x+1) + ")"] = windowObj
-                windowarr[fileName + " (copy " + str(x+1) + ")"].lineArr = []
                 
                 canvas = Canvas(window, width=595, height=595, bd=0, highlightthickness=0)
                 canvas.pack(side="top", fill="both", expand="yes")
@@ -105,17 +103,16 @@ def openNewEDS():
 
                 windowarr[fileName + " (copy " + str(x+1) + ")"].windowInstance = window
                 windowarr[fileName + " (copy " + str(x+1) + ")"].canvas = canvas
-                '''
+
     else:
         En=np.array(data)[:,0]
         Ct=np.array(data)[:,1]
-        print(Ct)
+        print(len(En))
+        print(len(Ct))
 
         windowObj = edsWindow(fileName, fileName, TkImage=eds_img, windowInstance=window, position=[0,0], zoomScale=1, energyArr=En, countArr=Ct, isActive=True) # Create window object
         updateWindowMenu(fileName)
         windowarr[fileName] = windowObj
-
-        root = tkinter.Toplevel()
         
         # Create a canvas
         w, h = 300, 200
@@ -130,7 +127,28 @@ def openNewEDS():
         windowarr[fileName].windowInstance = window
         windowarr[fileName].canvas = canvas
 
-        root.mainloop()
+        # Add widgets
+        moveButton = Button(window, width=4, height=3, text="Move", command=lambda: changeTool("Move", fileName))
+        moveButton.pack()
+        moveButton.place(x=2, y=2)
+
+        zoomButton = Button(window, width=4, height=3, text="Zoom", command=lambda name=newFileName: changeTool("Zoom", name))
+        zoomButton.pack()
+        zoomButton.place(x=2, y=72)
+
+        annotateButton = Button(window, width=4, height=3, text="Draw", command=lambda name=newFileName: changeTool("Draw", name))
+        annotateButton.pack()
+        annotateButton.place(x=2, y=142)
+
+        xScale = Scale(window, from_=-100, to=100, orient=HORIZONTAL, showvalue=50, label='Contrast', command=lambda x : helperEditSlider(x, newFileName, "contrast"))
+        xScale.set(0)
+        xScale.pack()
+        xScale.place(x=20, y=600)
+
+        yScale = Scale(window, from_=-100, to=100, orient=HORIZONTAL, showvalue=50, label='Contrast', command=lambda x : helperEditSlider(x, newFileName, "contrast"))
+        yScale.set(0)
+        yScale.pack()
+        yScale.place(x=170, y=600)
 
 
 
@@ -156,3 +174,14 @@ def draw_figure(canvas, figure, loc=(0, 0)):
     # which must be kept live or else the picture disappears
     return photo
     '''
+
+# Under the Window menu tab, either add or remove a window. Variable name is a string that is the window name
+def updateWindowMenu(name):
+    global windowmenu
+    if name in windowarr:
+        if windowarr[name].isActive:
+            windowmenu.delete(name)
+        else:
+            windowmenu.add_command(label=name, command=lambda: bringWindowToFront(name))
+    else:
+        windowmenu.add_command(label=name, command=lambda: bringWindowToFront(name))

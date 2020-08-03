@@ -2,20 +2,29 @@
 # Dependencies
 # </summary>
 from tkinter import *
+from tkinter import ttk, Tk, Canvas
 import tkinter.messagebox
 import tkinter.colorchooser
 import os, shutil, time
 import tkinter.filedialog
 from PIL import ImageTk, Image
 from ncempy.io import dm
+import matplotlib
+matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+import matplotlib.animation as animation
+from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
+from matplotlib.backend_bases import key_press_handler
+from matplotlib.ticker import (MultipleLocator, FormatStrFormatter, AutoMinorLocator)
+from matplotlib import style
+style.use('ggplot')
+from matplotlib.backends.backend_tkagg import FigureCanvasAgg
 import numpy as np
 import imageio
-from EDS import edsWindow
-from EDS import openNewEDS
 import cv2
 import json
-from SET import projectName, projectDir, madeActionBeforeLastSave, windowarr, old_mouse_x, old_mouse_y, zoomArr
+from SET import windowmenu, projectName, projectDir, madeActionBeforeLastSave, windowarr, old_mouse_x, old_mouse_y, zoomArr
 # <summary>
 # End of dependencies
 # </summary>
@@ -57,6 +66,34 @@ class materialWindow:
 # <summary>
 # End of each material window class
 # </summary>
+
+
+# <summary>
+# Each EDS window class
+# </summary>
+class edsWindow:
+    def __init__(self, name, parent, windowInstance, TkImage, position, zoomScale, scaleColor="#FFFFFF", previousMaterialName=None, nextMaterialName=None, isActive=False, canvas=None, energyArr=None, countArr=None, tool="Move", madeChangeBeforeSaving=True):
+        self.name = name
+        self.parent = parent
+        self.windowInstance = windowInstance
+        self.TkImage = TkImage
+        self.position = position
+        self.zoomScale = zoomScale
+        self.scaleColor = scaleColor
+        self.previousMaterialName = previousMaterialName
+        self.nextMaterialName = nextMaterialName
+        self.isActive = isActive
+        self.canvas = canvas
+        self.tool = tool
+        self.energyArr = energyArr # x-axis data
+        self.countArr = countArr # y-axis data
+        self.madeChangeBeforeSaving = madeChangeBeforeSaving
+# <summary>
+# End of each EDS window class
+# </summary>
+
+
+
 
 # <summary>
 # Custom tkinter function code
@@ -278,7 +315,6 @@ def matQuit(name, removeDialog=False):
 
 # Under the Window menu tab, either add or remove a window. Variable name is a string that is the window name
 def updateWindowMenu(name):
-    global windowmenu
     if name in windowarr:
         if windowarr[name].isActive:
             windowmenu.delete(name)
@@ -459,6 +495,8 @@ def newProject():
     fileName = fileNameArr[len(fileNameArr)-1]
     fileName = (fileName.split('.'))[0]
     root.title(fileName + " | Grainbound")
+
+    #add readme to Grainbound file
 
     global projectDir
     projectDir = fileDir
@@ -975,6 +1013,143 @@ def openNewMaterial():
 # End of custom tkinter function code
 # </summary>
 
+
+
+
+
+
+
+# Create eds file window
+def openNewEDS():
+    # File browser and creating window
+    fileDir = tkinter.filedialog.askopenfilenames(initialdir="/", title="Select a material", filetypes=(("emsa files", "*.emsa"),))
+    if len(fileDir) == 0:
+        return
+    fileNameArr = fileDir[0].split('/')
+    fileName = fileNameArr[len(fileNameArr)-1]
+    window = Toplevel()
+    window.title(fileName)
+    window.resizable(0,0) #disables resizing
+    window.geometry("1000x665+700+300")
+
+    parentName = fileName
+
+    # Plot the emsa spectrum data
+    fileDateArr = []
+    for i in range(2100):
+        fileDateArr.append([])
+    isdata = False
+    En = []
+    Ct = []
+    f = open(fileDir[0], "r")
+    for r in f:
+        if "#DATE" in r:
+            fileDateArr.append(r.replace('#DATE        : ',''))
+        elif "#SPECTRUM" in r:
+            isdata = True
+        elif isdata and "#ENDOFDATA" not in r:
+            txt = r.strip()
+            txt = txt.split(',')
+            En.append(float(txt[0]))
+            Ct.append(float(txt[1]))
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    p0, = ax.plot(En, Ct)
+    for v in range(1,len(Ct)-1):
+        if Ct[v]-Ct[v-1]>50 and Ct[v]-Ct[v+1]>50:
+            ax.annotate('(%s,%s)' % (En[v],Ct[v]), xy=(En[v],Ct[v]), textcoords='data')
+    ax.legend([p0], [""])
+    ax.grid(True, linestyle='-.')
+    ax.xaxis.set_minor_locator(AutoMinorLocator())
+    ax.tick_params(which='minor', length=4)
+    plt.xlabel('energy (keV)')
+    plt.ylabel('intensity counts')
+    plt.title('EDS Spectrum')
+    
+
+    #toolbar = NavigationToolbar2Tk(canvas, root)
+    #toolbar.update()
+    #canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)  
+
+    eds_img = ImageTk.PhotoImage(file="testgraph1.png")
+
+    
+    # Check to see if current material is open yet; if it is, make a copy of it increasing a number at the end of the file name; if not, just save it as its file name
+    if fileName in windowarr.keys():
+        for x in range(len(windowarr)):
+            if (fileName + " (copy " + str(x+1) + ")") in windowarr.keys():
+                continue
+            else:
+                window.title(fileName + " (copy " + str(x+1) + ")")
+                windowObj = edsWindow(fileName + " (copy " + str(x+1) + ")", fileName + " (copy " + str(x+1) + ")", windowInstance=window, position=[0,0], zoomScale=1, energyArr=En, countArr=Ct, isActive=True) # Create window object
+                updateWindowMenu(fileName + " (copy " + str(x+1) + ")")
+                windowarr[fileName + " (copy " + str(x+1) + ")"] = windowObj
+                
+                canvas = Canvas(window, width=595, height=595, bd=0, highlightthickness=0)
+                canvas.pack(side="top", fill="both", expand="yes")
+                canvas.place(x=66, y=0, anchor='nw')
+                canvas.create_image(0, 0, image="testgraph1.png", anchor=NW)
+                canvas.bind('<B1-Motion>', lambda x: clickedCanvas(x, newFileName))
+                canvas.bind('<ButtonRelease-1>', lambda x: stopClickedCanvas(x, newFileName))
+
+                canvas = FigureCanvasTkAgg(fig, master=window)  # A tk.DrawingArea.
+                canvas.draw()
+                canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
+
+                windowarr[fileName + " (copy " + str(x+1) + ")"].windowInstance = window
+                windowarr[fileName + " (copy " + str(x+1) + ")"].canvas = canvas
+
+    else:
+        eds_img = ImageTk.PhotoImage(file="testgraph1.png")
+        windowObj = edsWindow(fileName, fileName, TkImage=eds_img, windowInstance=window, position=[0,0], zoomScale=1, energyArr=En, countArr=Ct, isActive=True) # Create window object
+        updateWindowMenu(fileName)
+        windowarr[fileName] = windowObj
+        
+        canvas = Canvas(window, width=595, height=595, bd=0, highlightthickness=0)
+        canvas.pack(side="top", fill="both", expand="yes")
+        canvas.place(x=66, y=0, anchor='nw')
+        canvas = FigureCanvasTkAgg(fig, master=window)  # A tk.DrawingArea.
+        canvas.draw()
+        canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
+
+        canvas.bind('<B1-Motion>', lambda x: clickedCanvas(x, fileName))
+        canvas.bind('<ButtonRelease-1>', lambda x: stopClickedCanvas(x, fileName))
+        
+        window.protocol("WM_DELETE_WINDOW", lambda name=fileName: matQuit(name))
+        windowarr[fileName].windowInstance = window
+        windowarr[fileName].canvas = canvas
+
+        # Add widgets
+        moveButton = Button(window, width=4, height=3, text="Move", command=lambda: changeTool("Move", fileName))
+        moveButton.pack()
+        moveButton.place(x=2, y=2)
+
+        zoomButton = Button(window, width=4, height=3, text="Zoom", command=lambda name=newFileName: changeTool("Zoom", name))
+        zoomButton.pack()
+        zoomButton.place(x=2, y=72)
+
+        annotateButton = Button(window, width=4, height=3, text="Draw", command=lambda name=newFileName: changeTool("Draw", name))
+        annotateButton.pack()
+        annotateButton.place(x=2, y=142)
+
+        xScale = Scale(window, from_=-100, to=100, orient=HORIZONTAL, showvalue=50, label='Contrast', command=lambda x : helperEditSlider(x, newFileName, "contrast"))
+        xScale.set(0)
+        xScale.pack()
+        xScale.place(x=20, y=600)
+
+        yScale = Scale(window, from_=-100, to=100, orient=HORIZONTAL, showvalue=50, label='Contrast', command=lambda x : helperEditSlider(x, newFileName, "contrast"))
+        yScale.set(0)
+        yScale.pack()
+        yScale.place(x=170, y=600)
+
+
+
+
+
+
+
+
 # <summary>
 # Tkinter layout code
 # </summary>
@@ -1016,7 +1191,6 @@ logo_img = ImageTk.PhotoImage(Image.open('./Images/GrainBound_Logo.jpg').resize(
 logo = Label(root, image=logo_img, bg='white')
 logo.pack(side="top", fill="both", expand="yes")
 logo.place(relx=0.01, rely=0.01, anchor='nw')
-
 # Finishing the window
 root.config(menu=menubar)
 root.mainloop()
