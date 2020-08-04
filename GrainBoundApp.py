@@ -14,6 +14,7 @@ matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 import matplotlib.animation as animation
+import matplotlib.backends.backend_tkagg as tkagg
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 from matplotlib.backend_bases import key_press_handler
 from matplotlib.ticker import (MultipleLocator, FormatStrFormatter, AutoMinorLocator)
@@ -72,11 +73,10 @@ class materialWindow:
 # Each EDS window class
 # </summary>
 class edsWindow:
-    def __init__(self, name, parent, windowInstance, TkImage, position, zoomScale, scaleColor="#FFFFFF", previousMaterialName=None, nextMaterialName=None, isActive=False, canvas=None, energyArr=None, countArr=None, tool="Move", madeChangeBeforeSaving=True):
+    def __init__(self, name, parent, windowInstance, position, zoomScale, scaleColor="#FFFFFF", previousMaterialName=None, nextMaterialName=None, isActive=False, canvas=None, energyArr=None, countArr=None, tool="Move", madeChangeBeforeSaving=True):
         self.name = name
         self.parent = parent
         self.windowInstance = windowInstance
-        self.TkImage = TkImage
         self.position = position
         self.zoomScale = zoomScale
         self.scaleColor = scaleColor
@@ -406,6 +406,11 @@ def clickedCanvas(event, name):
         todo()
     elif currentWindow.tool == "Draw":
         paint(event, currentWindow.name)
+    elif currentWindow.tool == "ZoomIn":
+        todo()
+    elif currentWindow.tool == "ZoomOut":
+        todo()
+
 
 # This is the helper function to reset the cursor position after clicking on the canvas
 def stopClickedCanvas(event, name):
@@ -1053,27 +1058,6 @@ def openNewEDS():
             En.append(float(txt[0]))
             Ct.append(float(txt[1]))
 
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-    p0, = ax.plot(En, Ct)
-    for v in range(1,len(Ct)-1):
-        if Ct[v]-Ct[v-1]>50 and Ct[v]-Ct[v+1]>50:
-            ax.annotate('(%s,%s)' % (En[v],Ct[v]), xy=(En[v],Ct[v]), textcoords='data')
-    ax.legend([p0], [""])
-    ax.grid(True, linestyle='-.')
-    ax.xaxis.set_minor_locator(AutoMinorLocator())
-    ax.tick_params(which='minor', length=4)
-    plt.xlabel('energy (keV)')
-    plt.ylabel('intensity counts')
-    plt.title('EDS Spectrum')
-    
-
-    #toolbar = NavigationToolbar2Tk(canvas, root)
-    #toolbar.update()
-    #canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)  
-
-    eds_img = ImageTk.PhotoImage(file="testgraph1.png")
-
     
     # Check to see if current material is open yet; if it is, make a copy of it increasing a number at the end of the file name; if not, just save it as its file name
     if fileName in windowarr.keys():
@@ -1088,66 +1072,158 @@ def openNewEDS():
                 
                 canvas = Canvas(window, width=595, height=595, bd=0, highlightthickness=0)
                 canvas.pack(side="top", fill="both", expand="yes")
-                canvas.place(x=66, y=0, anchor='nw')
-                canvas.create_image(0, 0, image="testgraph1.png", anchor=NW)
-                canvas.bind('<B1-Motion>', lambda x: clickedCanvas(x, newFileName))
-                canvas.bind('<ButtonRelease-1>', lambda x: stopClickedCanvas(x, newFileName))
-
-                canvas = FigureCanvasTkAgg(fig, master=window)  # A tk.DrawingArea.
-                canvas.draw()
-                canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
+                canvas.place(x=500, y=0, anchor='nw')
+                #canvas = FigureCanvasTkAgg(fig, master=window)  # A tk.DrawingArea.
+                #canvas.draw()
+                #canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
 
                 windowarr[fileName + " (copy " + str(x+1) + ")"].windowInstance = window
                 windowarr[fileName + " (copy " + str(x+1) + ")"].canvas = canvas
 
     else:
-        eds_img = ImageTk.PhotoImage(file="testgraph1.png")
-        windowObj = edsWindow(fileName, fileName, TkImage=eds_img, windowInstance=window, position=[0,0], zoomScale=1, energyArr=En, countArr=Ct, isActive=True) # Create window object
+        
+        windowObj = edsWindow(fileName, fileName, windowInstance=window, position=[0,0], zoomScale=1, energyArr=En, countArr=Ct, isActive=True) # Create window object
         updateWindowMenu(fileName)
         windowarr[fileName] = windowObj
         
         canvas = Canvas(window, width=595, height=595, bd=0, highlightthickness=0)
         canvas.pack(side="top", fill="both", expand="yes")
-        canvas.place(x=66, y=0, anchor='nw')
-        canvas = FigureCanvasTkAgg(fig, master=window)  # A tk.DrawingArea.
-        canvas.draw()
-        canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
-
+        canvas.place(x=500, y=0, anchor='nw')
         canvas.bind('<B1-Motion>', lambda x: clickedCanvas(x, fileName))
         canvas.bind('<ButtonRelease-1>', lambda x: stopClickedCanvas(x, fileName))
-        
+    
+        max_x, max_y = max(En), max(Ct)
+        draw_figure(window, canvas, energyArr=En, countArr=Ct, limits=(max_x+10,max_y+10))     
+
         window.protocol("WM_DELETE_WINDOW", lambda name=fileName: matQuit(name))
+        #eds quit function
         windowarr[fileName].windowInstance = window
         windowarr[fileName].canvas = canvas
 
-        # Add widgets
-        moveButton = Button(window, width=4, height=3, text="Move", command=lambda: changeTool("Move", fileName))
-        moveButton.pack()
-        moveButton.place(x=2, y=2)
+    # This is for the other files selected in the file dialog; open them not as windows, but as window objects
+    for i in range(len(fileDir)):
+        if i == 0:
+            continue
 
-        zoomButton = Button(window, width=4, height=3, text="Zoom", command=lambda name=newFileName: changeTool("Zoom", name))
-        zoomButton.pack()
-        zoomButton.place(x=2, y=72)
+        fileNameArrOthers = fileDir[i].split('/')
+        fileNameOthers = fileNameArrOthers[len(fileNameArrOthers)-1]
 
-        annotateButton = Button(window, width=4, height=3, text="Draw", command=lambda name=newFileName: changeTool("Draw", name))
-        annotateButton.pack()
-        annotateButton.place(x=2, y=142)
+        # Create the graph
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        p0, = ax.plot(En, Ct)
+        for v in range(1,len(Ct)-1):
+            if Ct[v]-Ct[v-1]>50 and Ct[v]-Ct[v+1]>50:
+                ax.annotate('(%s,%s)' % (En[v],Ct[v]), xy=(En[v],Ct[v]), textcoords='data')
+        ax.legend([p0], [""])
+        ax.grid(True, linestyle='-.')
+        ax.xaxis.set_minor_locator(AutoMinorLocator())
+        ax.tick_params(which='minor', length=4)
+        plt.xlabel('energy (keV)')
+        plt.ylabel('intensity counts')
+        plt.title('EDS Spectrum')
 
-        xScale = Scale(window, from_=-100, to=100, orient=HORIZONTAL, showvalue=50, label='Contrast', command=lambda x : helperEditSlider(x, newFileName, "contrast"))
-        xScale.set(0)
-        xScale.pack()
-        xScale.place(x=20, y=600)
+        # Check to see if current material is open yet; if it is, make a copy of it increasing a number at the end of the file name; if not, just save it as its file name
+        if fileNameOthers in windowarr.keys():
+            for x in range(100):
+                if (fileNameOthers + " (copy " + str(x+1) + ")") in windowarr.keys():
+                    continue
+                else:
+                    windowObj = edsWindow(fileName, fileName, Figure=fig, windowInstance=window, position=[0,0], zoomScale=1, energyArr=En, countArr=Ct, isActive=True) # Create window object
+                    windowarr[fileNameOthers + " (copy " + str(x+1) + ")"].windowInstance = window
+                    windowarr[fileNameOthers + " (copy " + str(x+1) + ")"].canvas = windowarr[parentName].canvas
+                    break
+        else:
+            windowObj = edsWindow(fileNameOthers, parentName, windowInstance=window, Figure=fig, position=[0,0], ZoomScale=1, imageArr=mat_img_arr) # Create window object
+            windowarr[fileNameOthers] = windowObj
+            windowarr[fileNameOthers].windowInstance = window
+            windowarr[fileNameOthers].canvas = windowarr[parentName].canvas
+    
+    # For each material before and after, connect them using previousMaterialName and nextMaterialName
+    for i in range(len(fileDir)):
+        fileNameArrOthers = fileDir[i].split('/')
+        fileNameOthers = fileNameArrOthers[len(fileNameArrOthers)-1]
+        for x in range(100):
+            if (fileNameOthers + " (copy " + str(x+1) + ")") in windowarr.keys():
+                continue
+            elif x == 0:
+                break
+            else:
+                fileNameOthers = (fileNameOthers + " (copy " + str(x) + ")")
+                break
+        if i-1 >= 0:
+            fileNameArrBefore = fileDir[i-1].split('/')
+            fileNameBefore = fileNameArrBefore[len(fileNameArrBefore)-1]
+            for x in range(100):
+                if (fileNameBefore + " (copy " + str(x+1) + ")") in windowarr.keys():
+                    continue
+                elif x == 0:
+                    break
+                else:
+                    fileNameBefore = (fileNameBefore + " (copy " + str(x) + ")")
+                    break
+            windowarr[fileNameOthers].previousMaterialName = fileNameBefore
+        if i+1 <= len(fileDir)-1:
+            fileNameArrAfter = fileDir[i+1].split('/')
+            fileNameAfter = fileNameArrAfter[len(fileNameArrAfter)-1]
+            for x in range(100):
+                if (fileNameAfter + " (copy " + str(x+1) + ")") in windowarr.keys():
+                    continue
+                elif x == 0:
+                    break
+                else:
+                    fileNameAfter = (fileNameAfter + " (copy " + str(x) + ")")
+                    break
+            windowarr[fileNameOthers].nextMaterialName = fileNameAfter
+            
+    # Set this to true, so the user is prompted when attempting to close the program
+    global madeActionBeforeLastSave
+    madeActionBeforeLastSave = True
+    root.title("*" + projectName + " | Grainbound")
 
-        yScale = Scale(window, from_=-100, to=100, orient=HORIZONTAL, showvalue=50, label='Contrast', command=lambda x : helperEditSlider(x, newFileName, "contrast"))
-        yScale.set(0)
-        yScale.pack()
-        yScale.place(x=170, y=600)
+# <summary>
+# End of custom tkinter function code
+# </summary>
+
+# Draw a matplotlib figure onto a Tk canvas
+def draw_figure(window, canvas, energyArr, countArr, limits):
+    fig = plt.figure()
+    ax = fig.add_subplot(1,1,1)
+    ax.set_xlim([0,limits[0]])
+    ax.set_ylim([0,limits[1]])
+    p0, = ax.plot(energyArr, countArr)
+    for v in range(1,len(countArr)-1):
+        if countArr[v]-countArr[v-1]>50 and countArr[v]-countArr[v+1]>50:
+            ax.annotate('(%s,%s)' % (energyArr[v],countArr[v]), xy=(energyArr[v],countArr[v]), textcoords='data')
+    ax.legend([p0], [""])
+    ax.grid(True, linestyle='-.')
+    ax.xaxis.set_minor_locator(AutoMinorLocator())
+    ax.tick_params(which='minor', length=4)
+    plt.xlabel('energy (keV)')
+    plt.ylabel('intensity counts')
+    plt.title('EDS Spectrum')
+
+    canvas = FigureCanvasTkAgg(fig, master=window)  # A tk.DrawingArea.
+    canvas.draw()
+
+    frame1 = tkinter.Frame(window)
+    toolbar = NavigationToolbar2Tk(canvas, frame1)
+    frame1.pack(side=tkinter.TOP, fill=tkinter.X)
+    toolbar.update()
+    canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
+    toolbar.pack(side=TOP, fill=X)
+
+    #return photo # return reference to the photo object (must be kept live or else the picture disappears)
 
 
-
-
-
-
+# This is the helper function for tools
+def changeEDSTool(tool, name):
+    if tool == "ZoomIn":
+        windowarr[name].tool = "ZoomIn"
+    elif tool == "ZoomOut":
+        windowarr[name].tool = "ZoomOut"
+    elif tool == "Move":
+        windowarr[name].tool = "Move"
 
 
 # <summary>
