@@ -73,20 +73,21 @@ class materialWindow:
 # Each EDS window class
 # </summary>
 class edsWindow:
-    def __init__(self, name, parent, windowInstance, position, zoomScale, scaleColor="#FFFFFF", previousMaterialName=None, nextMaterialName=None, isActive=False, canvas=None, energyArr=None, countArr=None, tool="Move", madeChangeBeforeSaving=True):
+    def __init__(self, name, parent, windowInstance, position, zoomScale, scaleColor="#FFFFFF", isActive=False, canvas=None, energymain=None, energyleft=None, energyright=None, countmain=None, countleft=None, countright=None, madeChangeBeforeSaving=True):
         self.name = name
         self.parent = parent
         self.windowInstance = windowInstance
         self.position = position
         self.zoomScale = zoomScale
         self.scaleColor = scaleColor
-        self.previousMaterialName = previousMaterialName
-        self.nextMaterialName = nextMaterialName
         self.isActive = isActive
         self.canvas = canvas
-        self.tool = tool
-        self.energyArr = energyArr # x-axis data
-        self.countArr = countArr # y-axis data
+        self.energymain = energymain # x-axis data
+        self.energyleft = energyleft
+        self.energyright = energyright
+        self.countmain = countmain # y-axis data
+        self.countleft = countleft
+        self.countright = countright
         self.madeChangeBeforeSaving = madeChangeBeforeSaving
 # <summary>
 # End of each EDS window class
@@ -1046,17 +1047,23 @@ def openNewEDS():
     isdata = False
     En = []
     Ct = []
-    f = open(fileDir[0], "r")
-    for r in f:
-        if "#DATE" in r:
-            fileDateArr.append(r.replace('#DATE        : ',''))
-        elif "#SPECTRUM" in r:
-            isdata = True
-        elif isdata and "#ENDOFDATA" not in r:
-            txt = r.strip()
-            txt = txt.split(',')
-            En.append(float(txt[0]))
-            Ct.append(float(txt[1]))
+    for r in range(3):
+        En.append([])
+        Ct.append([])
+
+    for i in range(len(fileDir)):
+        isdata = False
+        f = open(fileDir[i], "r")
+        for r in f:
+            if "#DATE" in r:
+                fileDateArr.append(r.replace('#DATE        : ',''))
+            elif "#SPECTRUM" in r:
+                isdata = True
+            elif isdata and "#ENDOFDATA" not in r:
+                txt = r.strip()
+                txt = txt.split(',')
+                En[i].append(float(txt[0]))
+                Ct[i].append(float(txt[1]))
 
     
     # Check to see if current material is open yet; if it is, make a copy of it increasing a number at the end of the file name; if not, just save it as its file name
@@ -1066,7 +1073,7 @@ def openNewEDS():
                 continue
             else:
                 window.title(fileName + " (copy " + str(x+1) + ")")
-                windowObj = edsWindow(fileName + " (copy " + str(x+1) + ")", fileName + " (copy " + str(x+1) + ")", windowInstance=window, position=[0,0], zoomScale=1, energyArr=En, countArr=Ct, isActive=True) # Create window object
+                windowObj = edsWindow(fileName + " (copy " + str(x+1) + ")", fileName + " (copy " + str(x+1) + ")", windowInstance=window, position=[0,0], zoomScale=1, energymain=En[0], energyleft=En[1], energyright=En[2], countmain=Ct[0], countleft=Ct[1], countright=Ct[2], isActive=True) # Create window object
                 updateWindowMenu(fileName + " (copy " + str(x+1) + ")")
                 windowarr[fileName + " (copy " + str(x+1) + ")"] = windowObj
                 
@@ -1082,7 +1089,7 @@ def openNewEDS():
 
     else:
         
-        windowObj = edsWindow(fileName, fileName, windowInstance=window, position=[0,0], zoomScale=1, energyArr=En, countArr=Ct, isActive=True) # Create window object
+        windowObj = edsWindow(fileName, fileName, windowInstance=window, position=[0,0], zoomScale=1, energymain=En[0], energyleft=En[1], energyright=En[2], countmain=Ct[0], countleft=Ct[1], countright=Ct[2], isActive=True) # Create window object
         updateWindowMenu(fileName)
         windowarr[fileName] = windowObj
         
@@ -1092,8 +1099,8 @@ def openNewEDS():
         canvas.bind('<B1-Motion>', lambda x: clickedCanvas(x, fileName))
         canvas.bind('<ButtonRelease-1>', lambda x: stopClickedCanvas(x, fileName))
     
-        max_x, max_y = max(En), max(Ct)
-        draw_figure(window, canvas, energyArr=En, countArr=Ct, limits=(max_x+10,max_y+10))     
+        max_x, max_y = max(En[0]), max(Ct[0])
+        draw_figure(window, canvas, energy=En, count=Ct, limits=(max_x+10,max_y+10))     
 
         window.protocol("WM_DELETE_WINDOW", lambda name=fileName: matQuit(name))
         #eds quit function
@@ -1111,11 +1118,13 @@ def openNewEDS():
         # Create the graph
         fig = plt.figure()
         ax = fig.add_subplot(111)
-        p0, = ax.plot(En, Ct)
-        for v in range(1,len(Ct)-1):
-            if Ct[v]-Ct[v-1]>50 and Ct[v]-Ct[v+1]>50:
-                ax.annotate('(%s,%s)' % (En[v],Ct[v]), xy=(En[v],Ct[v]), textcoords='data')
-        ax.legend([p0], [""])
+        p0, = ax.plot(En[0], Ct[1], color='y')
+        p1, = ax.plot(En[0], Ct[2], color='g')
+        p2, = ax.plot(En[0], Ct[0], color='r')
+        for v in range(1,len(Ct[0])-1):
+            if Ct[0][v]-Ct[0][v-1]>50 and Ct[0][v]-Ct[0][v+1]>50:
+                ax.annotate('(%s,%s)' % (En[0][v],Ct[0][v]), xy=(En[0][v],Ct[0][v]), textcoords='data')
+        ax.legend([p0, p1, p2], ["left", "right", "main"])
         ax.grid(True, linestyle='-.')
         ax.xaxis.set_minor_locator(AutoMinorLocator())
         ax.tick_params(which='minor', length=4)
@@ -1129,12 +1138,12 @@ def openNewEDS():
                 if (fileNameOthers + " (copy " + str(x+1) + ")") in windowarr.keys():
                     continue
                 else:
-                    windowObj = edsWindow(fileName, fileName, Figure=fig, windowInstance=window, position=[0,0], zoomScale=1, energyArr=En, countArr=Ct, isActive=True) # Create window object
+                    windowObj = edsWindow(fileName, fileName, Figure=fig, windowInstance=window, position=[0,0], zoomScale=1, energymain=En, countmain=Ct, isActive=True) # Create window object
                     windowarr[fileNameOthers + " (copy " + str(x+1) + ")"].windowInstance = window
                     windowarr[fileNameOthers + " (copy " + str(x+1) + ")"].canvas = windowarr[parentName].canvas
                     break
         else:
-            windowObj = edsWindow(fileNameOthers, parentName, windowInstance=window, Figure=fig, position=[0,0], ZoomScale=1, imageArr=mat_img_arr) # Create window object
+            windowObj = edsWindow(fileNameOthers, parentName, windowInstance=window, position=[0,0], zoomScale=1) # Create window object
             windowarr[fileNameOthers] = windowObj
             windowarr[fileNameOthers].windowInstance = window
             windowarr[fileNameOthers].canvas = windowarr[parentName].canvas
@@ -1186,16 +1195,18 @@ def openNewEDS():
 # </summary>
 
 # Draw a matplotlib figure onto a Tk canvas
-def draw_figure(window, canvas, energyArr, countArr, limits):
+def draw_figure(window, canvas, energy, count, limits):
     fig = plt.figure()
     ax = fig.add_subplot(1,1,1)
     ax.set_xlim([0,limits[0]])
     ax.set_ylim([0,limits[1]])
-    p0, = ax.plot(energyArr, countArr)
-    for v in range(1,len(countArr)-1):
-        if countArr[v]-countArr[v-1]>50 and countArr[v]-countArr[v+1]>50:
-            ax.annotate('(%s,%s)' % (energyArr[v],countArr[v]), xy=(energyArr[v],countArr[v]), textcoords='data')
-    ax.legend([p0], [""])
+    p0, = ax.plot(energy[0], count[1], color='y')
+    p1, = ax.plot(energy[0], count[2], color='g')
+    p2, = ax.plot(energy[0], count[0], color='r')
+    for v in range(1,len(count[0])-1):
+        if count[0][v]-count[0][v-1]>50 and count[0][v]-count[0][v+1]>50:
+            ax.annotate('(%s,%s)' % (energy[0][v],count[0][v]), xy=(energy[0][v],count[0][v]), textcoords='data')
+    ax.legend([p0, p1, p2], ["left", "right", "main"])
     ax.grid(True, linestyle='-.')
     ax.xaxis.set_minor_locator(AutoMinorLocator())
     ax.tick_params(which='minor', length=4)
