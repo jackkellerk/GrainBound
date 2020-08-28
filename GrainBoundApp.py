@@ -19,6 +19,7 @@ from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationTool
 from matplotlib.backend_bases import key_press_handler
 from matplotlib.ticker import (MultipleLocator, FormatStrFormatter, AutoMinorLocator)
 from matplotlib import style
+from matplotlib.widgets import TextBox
 style.use('ggplot')
 from matplotlib.backends.backend_tkagg import FigureCanvasAgg
 import numpy as np
@@ -1027,6 +1028,7 @@ def openNewMaterial():
 
 # Create eds file window
 def openNewEDS():
+
     # File browser and creating window
     fileDir = tkinter.filedialog.askopenfilenames(initialdir="/", title="Select a material", filetypes=(("emsa files", "*.emsa"),))
     if len(fileDir) == 0:
@@ -1040,9 +1042,9 @@ def openNewEDS():
 
     parentName = fileName
 
-    # Plot the emsa spectrum data
+    # Extract the emsa spectrum data from file
     fileDateArr = []
-    for i in range(2100):
+    for i in range(2100): # potentially needs to be changed if file size varies
         fileDateArr.append([])
     isdata = False
     En = []
@@ -1064,7 +1066,6 @@ def openNewEDS():
                 txt = txt.split(',')
                 En[i].append(float(txt[0]))
                 Ct[i].append(float(txt[1]))
-
     
     # Check to see if current material is open yet; if it is, make a copy of it increasing a number at the end of the file name; if not, just save it as its file name
     if fileName in windowarr.keys():
@@ -1080,12 +1081,23 @@ def openNewEDS():
                 canvas = Canvas(window, width=595, height=595, bd=0, highlightthickness=0)
                 canvas.pack(side="top", fill="both", expand="yes")
                 canvas.place(x=500, y=0, anchor='nw')
-                #canvas = FigureCanvasTkAgg(fig, master=window)  # A tk.DrawingArea.
-                #canvas.draw()
-                #canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
+                canvas.bind('<B1-Motion>', lambda x: clickedCanvas(x, fileName))
+                canvas.bind('<ButtonRelease-1>', lambda x: stopClickedCanvas(x, fileName))
 
                 windowarr[fileName + " (copy " + str(x+1) + ")"].windowInstance = window
                 windowarr[fileName + " (copy " + str(x+1) + ")"].canvas = canvas
+
+                draw_figure(window, canvas, energy=En, count=Ct)     
+
+                window.protocol("WM_DELETE_WINDOW", lambda name=fileName: matQuit(name))
+                #eds quit function
+                windowarr[fileName].windowInstance = window
+                windowarr[fileName].canvas = canvas
+
+                # checkbox to compute averaged left&right data (En[1], En[2])
+                #var1 = tkinter.IntVar()
+                #c1 = tkinter.Checkbutton(window, text='Python', variable=var1, onvalue=1, offvalue=0, command=compute_ave(window, canvas, En, Ct))
+                #c1.pack()
 
     else:
         
@@ -1098,14 +1110,33 @@ def openNewEDS():
         canvas.place(x=500, y=0, anchor='nw')
         canvas.bind('<B1-Motion>', lambda x: clickedCanvas(x, fileName))
         canvas.bind('<ButtonRelease-1>', lambda x: stopClickedCanvas(x, fileName))
-    
-        max_x, max_y = max(En[0]), max(Ct[0])
-        draw_figure(window, canvas, energy=En, count=Ct, limits=(max_x+10,max_y+10))     
+        
+        draw_figure(window, canvas, energy=En, count=Ct)  
+
+        # need to generalize this
+        initial_x = 0, 22
+        initial_y = 0, 180000
+
+        # textboxes for users to input graph bounds. working on adding them to nav toolbar instead.
+        '''axbox = plt.axes([0.1, 0.05, 0.8, 0.075])
+        xlow_box = TextBox(axbox, 'x: from', initial=initial_x[0])
+        xlow_box.on_submit(submit_xlow)  
+        xhigh_box = TextBox(axbox, 'to', initial=initial_x[1])
+        xhigh_box.on_submit(submit_xhigh)  
+        ylow_box = TextBox(axbox, 'y: from', initial=initial_y[0])
+        ylow_box.on_submit(submit_ylow)  
+        yhigh_box = TextBox(axbox, 'to', initial=initial_[1]) 
+        yhigh_box.on_submit(submit_yhigh)  '''
 
         window.protocol("WM_DELETE_WINDOW", lambda name=fileName: matQuit(name))
         #eds quit function
         windowarr[fileName].windowInstance = window
         windowarr[fileName].canvas = canvas
+
+        # averaging graph checkbox
+        #var1 = tkinter.IntVar()
+        #c1 = tkinter.Checkbutton(canvas, text='Python', variable=var1, onvalue=1, offvalue=0, command=compute_ave(window, canvas, En, Ct))
+        #c1.pack()
 
     # This is for the other files selected in the file dialog; open them not as windows, but as window objects
     for i in range(len(fileDir)):
@@ -1115,22 +1146,7 @@ def openNewEDS():
         fileNameArrOthers = fileDir[i].split('/')
         fileNameOthers = fileNameArrOthers[len(fileNameArrOthers)-1]
 
-        # Create the graph
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-        p0, = ax.plot(En[0], Ct[1], color='y')
-        p1, = ax.plot(En[0], Ct[2], color='g')
-        p2, = ax.plot(En[0], Ct[0], color='r')
-        for v in range(1,len(Ct[0])-1):
-            if Ct[0][v]-Ct[0][v-1]>50 and Ct[0][v]-Ct[0][v+1]>50:
-                ax.annotate('(%s,%s)' % (En[0][v],Ct[0][v]), xy=(En[0][v],Ct[0][v]), textcoords='data')
-        ax.legend([p0, p1, p2], ["left", "right", "main"])
-        ax.grid(True, linestyle='-.')
-        ax.xaxis.set_minor_locator(AutoMinorLocator())
-        ax.tick_params(which='minor', length=4)
-        plt.xlabel('energy (keV)')
-        plt.ylabel('intensity counts')
-        plt.title('EDS Spectrum')
+        # do i need to draw figures here?
 
         # Check to see if current material is open yet; if it is, make a copy of it increasing a number at the end of the file name; if not, just save it as its file name
         if fileNameOthers in windowarr.keys():
@@ -1148,43 +1164,6 @@ def openNewEDS():
             windowarr[fileNameOthers].windowInstance = window
             windowarr[fileNameOthers].canvas = windowarr[parentName].canvas
     
-    # For each material before and after, connect them using previousMaterialName and nextMaterialName
-    for i in range(len(fileDir)):
-        fileNameArrOthers = fileDir[i].split('/')
-        fileNameOthers = fileNameArrOthers[len(fileNameArrOthers)-1]
-        for x in range(100):
-            if (fileNameOthers + " (copy " + str(x+1) + ")") in windowarr.keys():
-                continue
-            elif x == 0:
-                break
-            else:
-                fileNameOthers = (fileNameOthers + " (copy " + str(x) + ")")
-                break
-        if i-1 >= 0:
-            fileNameArrBefore = fileDir[i-1].split('/')
-            fileNameBefore = fileNameArrBefore[len(fileNameArrBefore)-1]
-            for x in range(100):
-                if (fileNameBefore + " (copy " + str(x+1) + ")") in windowarr.keys():
-                    continue
-                elif x == 0:
-                    break
-                else:
-                    fileNameBefore = (fileNameBefore + " (copy " + str(x) + ")")
-                    break
-            windowarr[fileNameOthers].previousMaterialName = fileNameBefore
-        if i+1 <= len(fileDir)-1:
-            fileNameArrAfter = fileDir[i+1].split('/')
-            fileNameAfter = fileNameArrAfter[len(fileNameArrAfter)-1]
-            for x in range(100):
-                if (fileNameAfter + " (copy " + str(x+1) + ")") in windowarr.keys():
-                    continue
-                elif x == 0:
-                    break
-                else:
-                    fileNameAfter = (fileNameAfter + " (copy " + str(x) + ")")
-                    break
-            windowarr[fileNameOthers].nextMaterialName = fileNameAfter
-            
     # Set this to true, so the user is prompted when attempting to close the program
     global madeActionBeforeLastSave
     madeActionBeforeLastSave = True
@@ -1194,19 +1173,19 @@ def openNewEDS():
 # End of custom tkinter function code
 # </summary>
 
-# Draw a matplotlib figure onto a Tk canvas
-def draw_figure(window, canvas, energy, count, limits):
+# Draw a matplotlib figure onto a Tk canvas with original dimensions
+def draw_figure(window, canvas, energy, count):
     fig = plt.figure()
     ax = fig.add_subplot(1,1,1)
-    ax.set_xlim([0,limits[0]])
-    ax.set_ylim([0,limits[1]])
-    p0, = ax.plot(energy[0], count[1], color='y')
-    p1, = ax.plot(energy[0], count[2], color='g')
-    p2, = ax.plot(energy[0], count[0], color='r')
+    ax.set_xlim([0,22])
+    ax.set_ylim([0,180000])
+    p0, = ax.plot(energy[0], count[1], color='b', linewidth=1)
+    p1, = ax.plot(energy[0], count[2], color='g', linewidth=1)
+    p2, = ax.vlines(energy[0], ymin=[0], ymax=count[0])
     for v in range(1,len(count[0])-1):
         if count[0][v]-count[0][v-1]>50 and count[0][v]-count[0][v+1]>50:
             ax.annotate('(%s,%s)' % (energy[0][v],count[0][v]), xy=(energy[0][v],count[0][v]), textcoords='data')
-    ax.legend([p0, p1, p2], ["left", "right", "main"])
+    #ax.legend([p0, p1, p2], ["left", "right", "main"])
     ax.grid(True, linestyle='-.')
     ax.xaxis.set_minor_locator(AutoMinorLocator())
     ax.tick_params(which='minor', length=4)
@@ -1217,6 +1196,7 @@ def draw_figure(window, canvas, energy, count, limits):
     canvas = FigureCanvasTkAgg(fig, master=window)  # A tk.DrawingArea.
     canvas.draw()
 
+    # adds navigation toolbar to eds window
     frame1 = tkinter.Frame(window)
     toolbar = NavigationToolbar2Tk(canvas, frame1)
     frame1.pack(side=tkinter.TOP, fill=tkinter.X)
@@ -1224,17 +1204,21 @@ def draw_figure(window, canvas, energy, count, limits):
     canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
     toolbar.pack(side=TOP, fill=X)
 
-    #return photo # return reference to the photo object (must be kept live or else the picture disappears)
 
+def compute_ave(window, canvas, energy, count):
+    aves = []
+    for i in range(len(count[0])):
+        temp = (count[0][i] + count[1][i] + count[2][i])/3
+        aves.append(temp)
 
-# This is the helper function for tools
-def changeEDSTool(tool, name):
-    if tool == "ZoomIn":
-        windowarr[name].tool = "ZoomIn"
-    elif tool == "ZoomOut":
-        windowarr[name].tool = "ZoomOut"
-    elif tool == "Move":
-        windowarr[name].tool = "Move"
+    draw_figure(window, canvas, energy, aves)
+
+# function for averaging checkbox / changing graph bounds
+def submit(text):
+    ydata = eval(text)
+    l.set_ydata(ydata)
+    ax.set_ylim(np.min(ydata), np.max(ydata))
+    draw_figure()
 
 
 # <summary>
@@ -1284,3 +1268,9 @@ root.mainloop()
 # <summary>
 # End of tkinter layout code
 # </summary>
+
+# customization of nav toolbar
+#class NavigationToolbar(NavigationToolbar2GTKAgg):
+    # only display the buttons we need
+#    toolitems = [t for t in NavigationToolbar2GTKAgg.toolitems if
+#                 t[0] in ('Home', 'Pan', 'Zoom', 'Save')]
