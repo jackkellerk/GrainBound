@@ -25,6 +25,8 @@ from matplotlib.backends.backend_tkagg import FigureCanvasAgg
 import numpy as np
 import imageio
 import cv2
+from subprocess import Popen
+import webbrowser
 import json
 from SET import windowmenu, projectName, projectDir, madeActionBeforeLastSave, windowarr, old_mouse_x, old_mouse_y, zoomArr
 # <summary>
@@ -35,9 +37,6 @@ from SET import windowmenu, projectName, projectDir, madeActionBeforeLastSave, w
 # Code before tkinter code
 # </summary>
 np.set_printoptions(threshold=sys.maxsize)
-
-# Global variables
-
 # <summary>
 # End of code before tkinter code
 # </summary>
@@ -94,8 +93,13 @@ class edsWindow:
 # End of each EDS window class
 # </summary>
 
-
-
+# <summary>
+# Global variables
+# </summary>
+bokehProcess = {} # Dictionary of bokehProcess ports
+# <summary>
+# End of global variables
+# </summary>
 
 # <summary>
 # Custom tkinter function code
@@ -103,9 +107,19 @@ class edsWindow:
 def todo(debug=""):
     print("TODO " + str(debug))
 
+def openBokeh():
+    global bokehProcess
+
+    for i in range(5006, 5100):
+        if str(i) in bokehProcess:
+            pass
+        else:
+            bokehProcess[str(i)] = Popen(['bokeh', 'serve', '--show', '--port', str(i), 'Bokeh_serve_v2.py'])
+            break
+
 # Helper function to draw the scale bar on the canvas; TODO: Actually finish this (add saving feature)
 def drawScaleBar(name):
-    txt = str(1 / int(windowarr[name].zoomScale))[:2] + " μm"
+    txt = str(1 / int(windowarr[name].zoomScale))[:3] + " μm"
     windowarr[name].canvas.create_text(62,535,fill=windowarr[name].scaleColor,font="Times 20 bold", text=txt)
     windowarr[name].canvas.create_rectangle(25, 555, 120, 560, outline=windowarr[name].scaleColor, fill=windowarr[name].scaleColor)
 
@@ -167,7 +181,7 @@ def updateContrast(value, window):
     drawScaleBar(window)
 
     windowarr[window].madeChangeBeforeSaving = True
-    root.title("*" + projectName + " | Grainbound")
+    projectTitle.config(text=("*" + projectName))
 
 # Updates the brightness in each material window; value is an integer, window is a string of the name of the window
 def updateBrightness(value, window):
@@ -195,7 +209,7 @@ def updateBrightness(value, window):
     drawScaleBar(window)
 
     windowarr[window].madeChangeBeforeSaving = True
-    root.title("*" + projectName + " | Grainbound")
+    projectTitle.config(text=("*" + projectName))
 
 # Updates the brightness in each material window; value is an integer, window is a string of the name of the window
 def updateGamma(value, window):
@@ -224,11 +238,15 @@ def updateGamma(value, window):
 
     drawScaleBar(window)
     windowarr[window].madeChangeBeforeSaving = True
-    root.title("*" + projectName + " | Grainbound")
+    projectTitle.config(text=("*" + projectName))
 
 # Called before root window quits
 def quit():
-    global madeActionBeforeLastSave
+    global madeActionBeforeLastSave, bokehProcess
+
+    for i in bokehProcess.keys():
+        bokehProcess[i].terminate()
+
     for mat in windowarr.keys():
         if windowarr[mat].madeChangeBeforeSaving == True:
             madeActionBeforeLastSave = True
@@ -413,7 +431,6 @@ def clickedCanvas(event, name):
     elif currentWindow.tool == "ZoomOut":
         todo()
 
-
 # This is the helper function to reset the cursor position after clicking on the canvas
 def stopClickedCanvas(event, name):
     global old_mouse_x, old_mouse_y
@@ -470,7 +487,7 @@ def zoom(event, name):
         old_mouse_y = event.y
     
     windowarr[name].madeChangeBeforeSaving = True
-    root.title("*" + projectName + " | Grainbound")
+    projectTitle.config(text=("*" + projectName))
 
 # This is the function to draw on the canvas
 def paint(event, name):
@@ -483,7 +500,7 @@ def paint(event, name):
     old_mouse_x = event.x
     old_mouse_y = event.y
     windowarr[name].madeChangeBeforeSaving = True
-    root.title("*" + projectName + " | Grainbound")
+    projectTitle.config(text=("*" + projectName))
 
 # New project
 def newProject():
@@ -498,10 +515,12 @@ def newProject():
             return
 
     fileDir = tkinter.filedialog.asksaveasfilename(initialdir="/", title="Save new project as", defaultextension=".grainbound", filetypes=(("grainbound files", "*.grainbound"), ("all files", "*.*")))
+    if len(fileDir) == 0:
+        return
     fileNameArr = fileDir.split('/')
     fileName = fileNameArr[len(fileNameArr)-1]
     fileName = (fileName.split('.'))[0]
-    root.title(fileName + " | Grainbound")
+    projectTitle.config(text=fileName)
 
     #add readme to Grainbound file
 
@@ -565,7 +584,7 @@ def save():
             windowarr[key].madeChangeBeforeSaving = False
         madeActionBeforeLastSave = False
 
-        root.title(projectName + " | Grainbound")
+        projectTitle.config(text=("*" + projectName))
 
 # Save the project
 def saveAs():
@@ -577,7 +596,7 @@ def saveAs():
     fileNameArr = fileDir.split('/')
     fileName = fileNameArr[len(fileNameArr)-1]
     fileName = (fileName.split("."))[0]
-    root.title(fileName + " | Grainbound")
+    projectTitle.config(text=fileName)
     jsonData = {}
     jsonData['name'] = fileName
     jsonData['contributors'] = "Jack Kellerk, Chris Marvel"
@@ -632,7 +651,7 @@ def openProject():
     projectName = (jsonData['name'].split('.'))[0]
     global projectDir
     projectDir = fileDir
-    root.title(projectName + " | Grainbound")
+    projectTitle.config(text=projectName)
 
     # TODO: Under the About section, edit contributors
 
@@ -1014,7 +1033,7 @@ def openNewMaterial():
     # Set this to true, so the user is prompted when attempting to close the program
     global madeActionBeforeLastSave
     madeActionBeforeLastSave = True
-    root.title("*" + projectName + " | Grainbound")
+    projectTitle.config(text=("*" + projectName))
 
 # <summary>
 # End of custom tkinter function code
@@ -1167,7 +1186,7 @@ def openNewEDS():
     # Set this to true, so the user is prompted when attempting to close the program
     global madeActionBeforeLastSave
     madeActionBeforeLastSave = True
-    root.title("*" + projectName + " | Grainbound")
+    projectTitle.config(text=("*" + projectName))
 
 # <summary>
 # End of custom tkinter function code
@@ -1225,9 +1244,9 @@ def submit(text):
 # Tkinter layout code
 # </summary>
 root = Tk()
-root.title(projectName + ' | GrainBound')
+root.title('GrainBound')
 root.geometry("1280x800")
-root.configure(background='#FFFFFF')
+root.configure(background='#F0F0F0')
 root.protocol("WM_DELETE_WINDOW", quit)
 
 # Creating the menubar
@@ -1258,12 +1277,148 @@ menubar.add_cascade(label="Window", menu=windowmenu) # click on this with a drop
 menubar.add_cascade(label="Help", menu=helpmenu)
 
 # Add logo
-logo_img = ImageTk.PhotoImage(Image.open('./Images/GrainBound_Logo.jpg').resize((320,180), Image.ANTIALIAS))
-logo = Label(root, image=logo_img, bg='white')
-logo.pack(side="top", fill="both", expand="yes")
-logo.place(relx=0.01, rely=0.01, anchor='nw')
+# logo_img = ImageTk.PhotoImage(Image.open('./Images/GrainBound_Logo.jpg').resize((320,180), Image.ANTIALIAS))
+# logo = Label(root, image=logo_img, bg='white')
+# logo.pack(side="top", fill="both", expand="yes")
+# logo.place(relx=0.01, rely=0.01, anchor='nw')
+
+canvasBig = Canvas(root, width=1280, height=800, bg='#F0F0F0')
+canvasBig.pack()
+
+# Left Panel
+leftPanel = canvasBig.create_rectangle(0, 0, 325, 800, fill='#f48da9', outline='#f48da9')
+
+projectLabel = Label(root, text="Projects", font=("Helvetica", 24, 'bold'), fg='#FFFFFF', bg='#f48da9')
+projectLabel.pack()
+projectLabel.place(relx=0.075, rely=0.07, anchor='nw')
+
+sandwhich = ImageTk.PhotoImage(Image.open('./Images/sandwhich.png').resize((35,35), Image.ANTIALIAS))
+sandwhichButton = Label(root, image=sandwhich, bg='#f48da9')
+sandwhichButton.pack(side="top", fill="both", expand="yes")
+sandwhichButton.place(x=20, y=58, anchor='nw')
+
+newProjectButtonImage = ImageTk.PhotoImage(Image.open('./Images/project-button.png').resize((260,130), Image.ANTIALIAS))
+newProjectButton = Label(root, image=newProjectButtonImage, bg='#f48da9')
+newProjectButton.pack(side="top", fill="both", expand="yes")
+newProjectButton.place(x=32.5, y=200, anchor='nw')
+newProjectButton.bind("<Button-1>", lambda e: newProject())
+
+openProjectButtonText = Label(root, text="Open Project", font=("Arial", 11, 'bold'), fg='#FFFFFF', bg='#9bd7d2')
+openProjectButtonText.pack()
+openProjectButtonText.place(x=118, y=372, anchor='nw')
+openProjectButton = canvasBig.create_rectangle(32.5, 365, 292.5, 400, outline='#FFFFFF', fill='#9bd7d2')
+openProjectButtonText.bind("<Button-1>", lambda e: openProject())
+canvasBig.tag_bind(openProjectButton, '<ButtonPress-1>', lambda e: openProject())
+
+saveProjectButtonText = Label(root, text="Save Project", font=("Arial", 11, 'bold'), fg='#FFFFFF', bg='#9bd7d2')
+saveProjectButtonText.pack()
+saveProjectButtonText.place(x=118, y=432, anchor='nw')
+saveProjectButton = canvasBig.create_rectangle(32.5, 425, 292.5, 460, outline='#FFFFFF', fill='#9bd7d2')
+saveProjectButtonText.bind("<Button-1>", lambda e: save())
+canvasBig.tag_bind(saveProjectButton, '<ButtonPress-1>', lambda e: save())
+
+saveProjectAsButtonText = Label(root, text="Save Project As", font=("Arial", 11, 'bold'), fg='#FFFFFF', bg='#9bd7d2')
+saveProjectAsButtonText.pack()
+saveProjectAsButtonText.place(x=108, y=492, anchor='nw')
+saveProjectAsButton = canvasBig.create_rectangle(32.5, 485, 292.5, 520, outline='#FFFFFF', fill='#9bd7d2')
+saveProjectAsButtonText.bind("<Button-1>", lambda e: saveAs())
+canvasBig.tag_bind(saveProjectAsButton, '<ButtonPress-1>', lambda e: saveAs())
+
+aboutButtonText = Label(root, text="About Us", font=("Arial", 11, 'bold'), fg='#FFFFFF', bg='#9bd7d2')
+aboutButtonText.pack()
+aboutButtonText.place(x=130, y=667, anchor='nw')
+aboutButton = canvasBig.create_rectangle(32.5, 660, 292.5, 695, outline='#FFFFFF', fill='#9bd7d2')
+
+settingsButtonText = Label(root, text="Settings", font=("Arial", 11, 'bold'), fg='#FFFFFF', bg='#9bd7d2')
+settingsButtonText.pack()
+settingsButtonText.place(x=135, y=727, anchor='nw')
+settingsButton = canvasBig.create_rectangle(32.5, 720, 292.5, 755, outline='#FFFFFF', fill='#9bd7d2')
+
+grainboundLabel = Label(root, text="© GrainBound LLC", font=("Helvetica", 8, 'bold'), fg='#FFFFFF', bg='#f48da9')
+grainboundLabel.pack()
+grainboundLabel.place(x=113, y=772, anchor='nw')
+
+# Bottom panel
+bottomPanel = canvasBig.create_rectangle(325, 737.5, 1280, 800, outline='#9bd7d2', fill='#9bd7d2')
+
+websiteText = Label(root, text="W W W . G R A I N B O U N D . C O M", font=("Arial", 11, 'bold'), fg="#FFFFFF", bg="#9bd7d2")
+websiteText.pack()
+websiteText.place(x=355, y=760, anchor='nw')
+
+phoneText = Label(root, text="1 - 8 5 5 - G R A I N B D", font=("Arial", 11, 'bold'), fg="#FFFFFF", bg="#9bd7d2")
+phoneText.pack()
+phoneText.place(x=1090, y=760, anchor='nw')
+
+facebook = ImageTk.PhotoImage(Image.open('./Images/facebook.png').resize((20,20), Image.ANTIALIAS))
+facebookButton = Label(root, image=facebook, bg='#9bd7d2')
+facebookButton.pack(side="top", fill="both", expand="yes")
+facebookButton.place(x=750, y=760, anchor='nw')
+
+instagram = ImageTk.PhotoImage(Image.open('./Images/instagram.png').resize((20,20), Image.ANTIALIAS))
+instagramButton = Label(root, image=instagram, bg='#9bd7d2')
+instagramButton.pack(side="top", fill="both", expand="yes")
+instagramButton.place(x=800, y=760, anchor='nw')
+
+youtube = ImageTk.PhotoImage(Image.open('./Images/youtube.png').resize((20,20), Image.ANTIALIAS))
+youtubeButton = Label(root, image=youtube, bg='#9bd7d2')
+youtubeButton.pack(side="top", fill="both", expand="yes")
+youtubeButton.place(x=850, y=760, anchor='nw')
+
+linkedin = ImageTk.PhotoImage(Image.open('./Images/linkedin.png').resize((20,20), Image.ANTIALIAS))
+linkedinButton = Label(root, image=linkedin, bg='#9bd7d2')
+linkedinButton.pack(side="top", fill="both", expand="yes")
+linkedinButton.place(x=900, y=760, anchor='nw')
+
+# Border rectangles
+vertRectangle = canvasBig.create_rectangle(323, 0, 327, 800, outline='#FFFFFF', fill='#FFFFFF')
+horizRectangle = canvasBig.create_rectangle(325, 735.5, 1280, 739.5, outline='#FFFFFF', fill='#FFFFFF')
+
+# Right panel
+projectTitle = Label(root, text="Untitled Project", font=("Helvetica", 48, 'bold'), fg='#000000', bg='#F0F0F0')
+projectTitle.pack()
+projectTitle.place(x=357.5, y=41, anchor='nw')
+
+logoImage = ImageTk.PhotoImage(Image.open('./Images/logo.png').resize((250,250), Image.ANTIALIAS))
+logoImageButton = Label(root, image=logoImage, bg='#F0F0F0')
+logoImageButton.pack(side="top", fill="both", expand="yes")
+logoImageButton.place(x=1005, y=25, anchor='nw')
+
+imageAnalysisImageButton = ImageTk.PhotoImage(Image.open('./Images/imaging-button.png').resize((260,130), Image.ANTIALIAS))
+imageAnalysisButton = Label(root, image=imageAnalysisImageButton, bg='#F0F0F0')
+imageAnalysisButton.pack(side="top", fill="both", expand="yes")
+imageAnalysisButton.place(x=357.5, y=200, anchor='nw')
+imageAnalysisButton.bind("<Button-1>", lambda e: openNewMaterial())
+
+compositionAnalysisImageButton = ImageTk.PhotoImage(Image.open('./Images/composition-button.png').resize((260,130), Image.ANTIALIAS))
+compositionAnalysisButton = Label(root, image=compositionAnalysisImageButton, bg='#F0F0F0')
+compositionAnalysisButton.pack(side="top", fill="both", expand="yes")
+compositionAnalysisButton.place(x=672.5, y=200, anchor='nw')
+compositionAnalysisButton.bind("<Button-1>", lambda e: openNewEDS())
+
+machineLearningImageButton = ImageTk.PhotoImage(Image.open('./Images/ml-button.png').resize((260,130), Image.ANTIALIAS))
+machineLearningButton = Label(root, image=machineLearningImageButton, bg='#F0F0F0')
+machineLearningButton.pack(side="top", fill="both", expand="yes")
+machineLearningButton.place(x=987.5, y=200, anchor='nw')
+machineLearningButton.bind("<Button-1>", lambda e: openBokeh())
+
+imagingWindowsText = Label(root, text="Imaging Windows", font=("Arial", 11), fg='#000000', bg='#FFFFFF')
+imagingWindowsText.pack()
+imagingWindowsText.place(x=432, y=372, anchor='nw')
+imagingWindowsButton = canvasBig.create_rectangle(357.5, 365, 617.5, 400, outline='#FFFFFF', fill='#FFFFFF')
+
+compositionWindowsText = Label(root, text="Composition Windows", font=("Arial", 11), fg='#000000', bg='#FFFFFF')
+compositionWindowsText.pack()
+compositionWindowsText.place(x=732, y=372, anchor='nw')
+compositionWindowsButton = canvasBig.create_rectangle(672.5, 365, 932.5, 400, outline='#FFFFFF', fill='#FFFFFF')
+
+machineLearningWindowsText = Label(root, text="Machine Learning Windows", font=("Arial", 11), fg='#000000', bg='#FFFFFF')
+machineLearningWindowsText.pack()
+machineLearningWindowsText.place(x=1032, y=372, anchor='nw')
+machineLearningWindowsButton = canvasBig.create_rectangle(987.5, 365, 1247.5, 400, outline='#FFFFFF', fill='#FFFFFF')
+
 # Finishing the window
-root.config(menu=menubar)
+# root.config(menu=menubar)
+
 root.mainloop()
 # <summary>
 # End of tkinter layout code
