@@ -1194,17 +1194,26 @@ def openNewEDS():
 
 # Draw a matplotlib figure onto a Tk canvas with original dimensions
 def draw_figure(window, canvas, energy, count):
+    print("drawing figure...")
     fig = plt.figure()
     ax = fig.add_subplot(1,1,1)
     ax.set_xlim([0,22])
     ax.set_ylim([0,180000])
-    p0, = ax.plot(energy[0], count[1], color='b', linewidth=1)
-    p1, = ax.plot(energy[0], count[2], color='g', linewidth=1)
-    p2, = ax.vlines(energy[0], ymin=[0], ymax=count[0])
+    if (len(count[1])>0 and len(count[2])>0): #if three emsa files (main, L, R) are selected
+        p0, = ax.plot(energy[0], count[1], color='b', linewidth=.5)
+        p1, = ax.plot(energy[0], count[2], color='g', linewidth=.5)
+        p2, = ax.plot(energy[0], count[0], color='r', linewidth=1)
+        for v in range(1,len(count[0])-1):
+            if count[0][v]-count[0][v-1]>50 and count[0][v]-count[0][v+1]>50:
+                ax.annotate('(%s,%s)' % (energy[0][v],count[0][v]), xy=(energy[0][v],count[0][v]), textcoords='data')
+        ax.legend([p0, p1, p2], ["left", "right", "main"])
+    else: #if only one (main) emsa file selected
+        p0, = ax.plot(energy[0], count[0], color='r', linewidth=1)
+        ax.legend([p0], ["main"])
+    # graph peaks for main curve
     for v in range(1,len(count[0])-1):
-        if count[0][v]-count[0][v-1]>50 and count[0][v]-count[0][v+1]>50:
-            ax.annotate('(%s,%s)' % (energy[0][v],count[0][v]), xy=(energy[0][v],count[0][v]), textcoords='data')
-    #ax.legend([p0, p1, p2], ["left", "right", "main"])
+            if count[0][v]-count[0][v-1]>50 and count[0][v]-count[0][v+1]>50:
+                ax.annotate('(%s,%s)' % (energy[0][v],count[0][v]), xy=(energy[0][v],count[0][v]), textcoords='data')
     ax.grid(True, linestyle='-.')
     ax.xaxis.set_minor_locator(AutoMinorLocator())
     ax.tick_params(which='minor', length=4)
