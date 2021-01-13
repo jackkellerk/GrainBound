@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>GrainBound Machine Learning</title>
+        <style>
+            body { background: #ffffff; }
+            #header
+            {
+                background-color: #ffffff;
+                width: 100vw;
+            }
+            #logo
+            {
+                height: 80px;
+                margin-right: 10px;
+            }
+        </style>
+        <meta charset="utf-8">
+        {{ bokeh_css }}
+        {{ bokeh_js }}
+    </head>
+    <body>
+        <div id = "header">
+            <center>
+                <img id="logo" src="https://static.wixstatic.com/media/eedfcd_88c8b97baa03473a940ebdaf59b460fe%7Emv2.png">
+                <img src="https://static.wixstatic.com/media/eedfcd_399187c9d5d749f08e4d2100def992ba~mv2.png/v1/fill/w_279,h_70,al_c,q_85,usm_0.66_1.00_0.01/GrainBound_Logo%20v2.webp">
+            </center>
+        </div>
+        {{ plot_div|indent(8) }}
+        {{ plot_script|indent(8) }}
+    </body>
+</html>

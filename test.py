@@ -1,4 +1,8 @@
-from ncempy.io import dm; import matplotlib.pyplot as plt; import time
-dmData = dm.dmReader('./Data/example.dm3') #a simple one image data file
-plt.imshow(dmData['data']) #show the image using pyplot
-plt.show()
+from bokeh.plotting import figure
+from bokeh.resources import CDN
+from bokeh.embed import file_html
+
+plot = figure()
+plot.circle([1,2], [3,4])
+
+html = file_html(plot, CDN, "my plot")
